@@ -10,44 +10,64 @@ export const AuthProvider = ({ children }) => {
 
   const loadProfile = async (uid) => {
     if (!uid) { setProfile(null); return; }
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id,is_admin,created_at')
-      .eq('id', uid)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id,is_admin,created_at')
+        .eq('id', uid)
+        .single();
 
-    if (!error) setProfile(data);
-    else setProfile(null);
+      if (!error) setProfile(data);
+      else setProfile(null);
+    } catch {
+      setProfile(null);
+    }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    // Watchdog: never allow infinite loading (e.g., bad env / hung promise)
+    const watchdog = setTimeout(() => {
       if (!mounted) return;
-      const u = data.session?.user || null;
-      setUser(u);
-      await loadProfile(u?.id);
       setLoading(false);
-    });
+      if (user === undefined) setUser(null);
+    }, 2000);
 
-    const { data: { subscription } } =
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
         if (!mounted) return;
-        const u = session?.user || null;
+        const u = data.session?.user || null;
         setUser(u);
         await loadProfile(u?.id);
-      });
+      } catch {
+        if (!mounted) return;
+        setUser(null);
+        setProfile(null);
+      } finally {
+        if (!mounted) return;
+        clearTimeout(watchdog);
+        setLoading(false);
+      }
+    })();
+
+    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      const u = session?.user || null;
+      setUser(u);
+      await loadProfile(u?.id);
+    });
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      clearTimeout(watchdog);
+      try { data?.subscription?.unsubscribe(); } catch {}
     };
   }, []);
 
   const signIn = async (email, password) => {
-    const { data, error } =
-      await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (!error) {
       setUser(data.user);
       await loadProfile(data.user?.id);
@@ -75,3 +95,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
