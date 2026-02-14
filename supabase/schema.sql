@@ -99,3 +99,56 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+-- =========================================================
+-- PHASE 2 ADDITIONS — STATUS + EXPIRY SUPPORT
+-- =========================================================
+
+-- Soft delete (safer than hard delete in enterprise systems)
+ALTER TABLE IF EXISTS equipment
+  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITH TIME ZONE;
+
+CREATE INDEX IF NOT EXISTS idx_equipment_deleted_at ON equipment(deleted_at);
+
+-- Optional stored status (frontend can still compute, but this helps)
+-- Values: available | in_use | return_due | overdue | retired
+ALTER TABLE IF EXISTS equipment
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'available';
+
+CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status);
+
+-- Helpful index for test-tag expiry scans
+CREATE INDEX IF NOT EXISTS idx_equipment_test_tag_due ON equipment(test_tag_next_due_date);
+
+-- Current open checkout per equipment (latest where returned_at is null)
+CREATE OR REPLACE VIEW public.equipment_current_status AS
+SELECT
+  e.*,
+  c.id AS open_checkout_id,
+  c.checked_out_to,
+  c.site,
+  c.expected_return_at,
+  c.created_at AS checked_out_at,
+  CASE
+    WHEN e.deleted_at IS NOT NULL THEN 'retired'
+    WHEN c.id IS NULL THEN 'available'
+    WHEN c.returned_at IS NULL AND c.expected_return_at > NOW() THEN 'in_use'
+    WHEN c.returned_at IS NULL AND c.expected_return_at <= NOW() THEN 'overdue'
+    ELSE 'available'
+  END AS computed_status,
+  CASE
+    WHEN e.test_tag_next_due_date IS NULL THEN NULL
+    WHEN e.test_tag_next_due_date < CURRENT_DATE THEN 'expired'
+    WHEN e.test_tag_next_due_date <= (CURRENT_DATE + INTERVAL '30 days') THEN 'due_soon'
+    ELSE 'ok'
+  END AS test_tag_state
+FROM equipment e
+LEFT JOIN LATERAL (
+  SELECT *
+  FROM checkouts
+  WHERE equipment_id = e.id AND returned_at IS NULL
+  ORDER BY created_at DESC
+  LIMIT 1
+) c ON TRUE;
+
+-- RLS: allow authenticated users to read the view (it uses base tables)
+GRANT SELECT ON public.equipment_current_status TO authenticated;
