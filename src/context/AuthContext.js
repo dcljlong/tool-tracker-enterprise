@@ -6,20 +6,37 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(undefined);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState(null);
+
+  const loadProfile = async (uid) => {
+    if (!uid) { setProfile(null); return; }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id,is_admin,created_at')
+      .eq('id', uid)
+      .single();
+
+    if (!error) setProfile(data);
+    else setProfile(null);
+  };
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
-      setUser(data.session?.user || null);
+      const u = data.session?.user || null;
+      setUser(u);
+      await loadProfile(u?.id);
       setLoading(false);
     });
 
     const { data: { subscription } } =
-      supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.auth.onAuthStateChange(async (_event, session) => {
         if (!mounted) return;
-        setUser(session?.user || null);
+        const u = session?.user || null;
+        setUser(u);
+        await loadProfile(u?.id);
       });
 
     return () => {
@@ -31,7 +48,10 @@ export const AuthProvider = ({ children }) => {
   const signIn = async (email, password) => {
     const { data, error } =
       await supabase.auth.signInWithPassword({ email, password });
-    if (!error) setUser(data.user);
+    if (!error) {
+      setUser(data.user);
+      await loadProfile(data.user?.id);
+    }
     return { error };
   };
 
@@ -42,10 +62,13 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setProfile(null);
   };
 
+  const isAdmin = Boolean(profile?.is_admin);
+
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, profile, isAdmin, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
