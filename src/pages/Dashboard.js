@@ -1,57 +1,36 @@
-﻿import React, { useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+﻿import React from 'react';
+import AppShell from '../components/AppShell';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
-  const { user, loading, signOut, isAdmin } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login', { replace: true, state: { from: { pathname: '/' } } });
-    }
-  }, [user, loading, navigate]);
-
-  if (loading || !user) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Loader2 size={32} style={{ animation: 'spin 1s linear infinite' }} />
-      </div>
-    );
-  }
+  const { isAdmin } = useAuth();
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f9fafb', padding: '24px' }}>
-      <h1 style={{ marginTop: 0 }}>Dashboard</h1>
+    <AppShell title="Dashboard">
+      <div style={{ display: 'grid', gap: 12 }}>
+        <h1 style={{ margin: 0 }}>Dashboard</h1>
 
-      <div style={{ color: '#6b7280', marginTop: 6 }}>
-        Logged in as: <b>{user.email}</b> {isAdmin ? '(Admin)' : '(User)'}
+        <div style={{ color: '#6b7280' }}>
+          {isAdmin
+            ? 'Admin: you can add/edit tools and manage system settings.'
+            : 'User: read-only tools, checkout/return workflows.'}
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 8 }}>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 12, color: '#6b7280' }}>Expired Tags</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>—</div>
+          </div>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 12, color: '#6b7280' }}>Overdue Returns</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>—</div>
+          </div>
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12 }}>
+            <div style={{ fontSize: 12, color: '#6b7280' }}>Tools In Use</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>—</div>
+          </div>
+        </div>
       </div>
-
-      <div style={{ marginTop: 16, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-        <Link
-          to="/equipment"
-          style={{
-            padding: '10px 14px',
-            borderRadius: 8,
-            border: '1px solid #d1d5db',
-            background: 'white',
-            textDecoration: 'none',
-            color: '#111827',
-            fontWeight: 600
-          }}
-        >
-          Go to Equipment
-        </Link>
-
-        <button
-          onClick={signOut}
-          style={{ padding: '10px 14px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }}
-        >
-          Logout
-        </button>
-      </div>
-    </div>
+    </AppShell>
   );
 }

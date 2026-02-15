@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabaseConfigOk } from '../lib/supabase';
+import { supabase, supabaseConfigOk } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
 const TABS = [
@@ -28,6 +28,7 @@ export default function Equipment() {
   const load = useCallback(async () => {
     setErr(null);
 
+    // Always clear UI state on early exits
     if (loading) { setBusy(false); return; }
     if (!user) { setBusy(false); setRows([]); return; }
 
@@ -38,49 +39,23 @@ export default function Equipment() {
       return;
     }
 
-    const url = (process.env.REACT_APP_SUPABASE_URL || '').replace(/\/+$/, '');
-    const key = (process.env.REACT_APP_SUPABASE_ANON_KEY || '').trim();
-    if (!url || !key) {
-      setBusy(false);
-      setErr('Missing Supabase env at runtime (restart dev server after .env changes).');
-      setRows([]);
-      return;
-    }
-
     setBusy(true);
 
-    const select =
-      'id,asset_id,qr_code_value,name,category,condition,notes,' +
-      'test_tag_done_date,test_tag_next_due_date,primary_photo_url,' +
-      'computed_status,test_tag_state,checked_out_to,site,' +
-      'expected_return_at,checked_out_at,created_at';
-
-    const endpoint =
-      `${url}/rest/v1/equipment_current_status` +
-      `?select=${encodeURIComponent(select)}` +
-      `&order=${encodeURIComponent('created_at.desc')}`;
-
+    // Hard timeout so "Loading…" can’t hang forever
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 12000);
 
     try {
-      const res = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${key}`,
-          Accept: 'application/json',
-        },
-        signal: ac.signal,
-      });
+      const { data, error } = await supabase
+        .from('equipment_current_status')
+        .select('id,asset_id,qr_code_value,name,category,condition,notes,test_tag_done_date,test_tag_next_due_date,primary_photo_url,computed_status,test_tag_state,checked_out_to,site,expected_return_at,checked_out_at,created_at')
+        .order('created_at', { ascending: false })
+        .abortSignal(ac.signal);
 
-      const text = await res.text();
-
-      if (!res.ok) {
-        setErr(`HTTP ${res.status} ${res.statusText}\n${text}`);
+      if (error) {
+        setErr(JSON.stringify(error, null, 2));
         setRows([]);
       } else {
-        const data = text ? JSON.parse(text) : [];
         setRows(Array.isArray(data) ? data : []);
       }
     } catch (e) {
@@ -135,11 +110,8 @@ export default function Equipment() {
   }, [rows]);
 
   const debug = useMemo(() => {
-    return "loading=" + String(loading) +
-      " busy=" + String(busy) +
-      " user=" + (user ? user.email : "null") +
-      " rows=" + rows.length;
-  }, [loading, busy, user, rows.length]);
+    return "loading=" + String(loading) + " user=" + (user ? user.email : "null") + " rows=" + rows.length;
+  }, [loading, user, rows.length]);
 
   return (
     <div style={{ padding: 24 }}>
@@ -209,7 +181,7 @@ export default function Equipment() {
         ))}
       </div>
 
-      {busy && <div style={{ marginTop: 16 }}>Loading…</div>}
+      {busy && rows.length === 0 && <div style={{ marginTop: 16 }}>Loading…</div>}
 
       {err && (
         <div style={{ marginTop: 16, background: '#fee2e2', border: '1px solid #fecaca', color: '#991b1b', padding: 12, borderRadius: 10 }}>
