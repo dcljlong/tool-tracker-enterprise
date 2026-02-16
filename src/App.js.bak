@@ -7,7 +7,6 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Equipment from './pages/Equipment';
 import EquipmentDetail from './pages/EquipmentDetail';
-import EquipmentForm from './pages/EquipmentForm';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -21,21 +20,6 @@ function RequireAuth({ children }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
-  return children;
-}
-
-function RequireAdmin({ children }) {
-  const { loading, isAdmin } = useAuth();
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Loader2 size={32} />
-      </div>
-    );
-  }
-
-  if (!isAdmin) return <Navigate to="/" replace />;
   return children;
 }
 
@@ -67,9 +51,7 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  const p = (window.location.pathname || '').replace(/\/+$/, ''); // trim trailing slash
-  const basename =
-  process.env.NODE_ENV === 'production'
+  const basename = window.location.pathname.startsWith('/tool-tracker-enterprise')
     ? '/tool-tracker-enterprise'
     : '';
 
@@ -79,17 +61,9 @@ export default function App() {
         <Router basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
             <Route path="/login" element={<Login />} />
-
             <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
-
             <Route path="/equipment" element={<RequireAuth><Equipment /></RequireAuth>} />
-
-            {/* Admin-only MUST come before /equipment/:id */}
-            <Route path="/equipment/new" element={<RequireAuth><RequireAdmin><EquipmentForm mode="create" /></RequireAdmin></RequireAuth>} />
-            <Route path="/equipment/:id/edit" element={<RequireAuth><RequireAdmin><EquipmentForm mode="edit" /></RequireAdmin></RequireAuth>} />
-
             <Route path="/equipment/:id" element={<RequireAuth><EquipmentDetail /></RequireAuth>} />
-
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>

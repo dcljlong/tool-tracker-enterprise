@@ -1,5 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 function fmtLocal(dt) {
@@ -25,7 +25,6 @@ async function fetchJsonWithTimeout(url, { headers }, ms, label) {
 
 export default function EquipmentDetail() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const { user, loading, isAdmin, accessToken, profile, profileError, profileLoadedAt } = useAuth();
 
   const [busy, setBusy] = useState(false);
@@ -153,23 +152,12 @@ export default function EquipmentDetail() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {isAdmin && (
-            <button
-              onClick={() => navigate(/equipment//edit)}
-              style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #111827', background: '#111827', color: 'white', cursor: 'pointer', fontWeight: 700 }}
-            >
-              Edit
-            </button>
-          )}
-
-          <button
-            onClick={load}
-            style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600 }}
-          >
-            Refresh
-          </button>
-        </div>
+        <button
+          onClick={load}
+          style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Refresh
+        </button>
       </div>
 
       {busy && <div style={{ marginTop: 16 }}>Loading…</div>}
@@ -249,4 +237,3 @@ export default function EquipmentDetail() {
     </div>
   );
 }
-

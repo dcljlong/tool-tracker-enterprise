@@ -68,10 +68,7 @@ class ErrorBoundary extends React.Component {
 
 export default function App() {
   const p = (window.location.pathname || '').replace(/\/+$/, ''); // trim trailing slash
-  const basename =
-  process.env.NODE_ENV === 'production'
-    ? '/tool-tracker-enterprise'
-    : '';
+  const basename = p.startsWith('/tool-tracker-enterprise') ? '/tool-tracker-enterprise' : '';
 
   return (
     <AuthProvider>
@@ -97,4 +94,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-

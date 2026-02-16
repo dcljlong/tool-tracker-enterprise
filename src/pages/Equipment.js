@@ -163,6 +163,17 @@ export default function Equipment() {
             placeholder="Search tools..."
             style={{ width: 320, maxWidth: '90vw', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8 }}
           />
+
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/equipment/new')}
+              style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #111827', background: '#111827', color: 'white', cursor: 'pointer', fontWeight: 700 }}
+              title="Admin: create new equipment"
+            >
+              New Equipment
+            </button>
+          )}
+
           <button
             onClick={load}
             style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600 }}
@@ -243,6 +254,28 @@ export default function Equipment() {
                       Tag: {item.test_tag_state}
                     </span>
                   )}
+
+                  {isAdmin && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigate(`/equipment/${item.id}/edit`);
+                      }}
+                      style={{
+                        fontSize: 12,
+                        padding: '6px 10px',
+                        borderRadius: 10,
+                        border: '1px solid #d1d5db',
+                        background: 'white',
+                        cursor: 'pointer',
+                        fontWeight: 700
+                      }}
+                      title="Admin: edit this equipment"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -262,3 +295,5 @@ export default function Equipment() {
     </div>
   );
 }
+
+
