@@ -1,4 +1,5 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabaseConfigOk } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 
@@ -17,6 +18,7 @@ function fmtLocal(dt) {
 }
 
 export default function Equipment() {
+  const navigate = useNavigate();
   const { user, loading, isAdmin } = useAuth();
 
   const [tab, setTab] = useState('all');
@@ -221,7 +223,12 @@ export default function Equipment() {
       {!busy && !err && (
         <div style={{ marginTop: 16, display: 'grid', gap: 12 }}>
           {filtered.map(item => (
-            <div key={item.id} style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}>
+            <div
+              key={item.id}
+              onClick={() => navigate(`/equipment/${item.id}`)}
+              style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14, cursor: 'pointer' }}
+              title="Open details"
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                 <div>
                   <div style={{ fontWeight: 800 }}>{item.name}</div>

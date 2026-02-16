@@ -1,50 +1,107 @@
-﻿import React, { createContext, useContext, useEffect, useState } from 'react';
+﻿import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(undefined);
+  const [session, setSession] = useState(null);
+  const [user, setUser] = useState(undefined); // undefined until first auth check completes
   const [loading, setLoading] = useState(true);
+
   const [profile, setProfile] = useState(null);
+  const [profileError, setProfileError] = useState(null);
+  const [profileLoadedAt, setProfileLoadedAt] = useState(null);
+
+  const accessToken = useMemo(() => session?.access_token || '', [session]);
+  const isAdmin = Boolean(profile?.is_admin);
 
   const loadProfile = async (uid) => {
-    if (!uid) { setProfile(null); return; }
     try {
+      if (!uid) {
+        setProfile(null);
+        setProfileError(null);
+        setProfileLoadedAt(new Date().toISOString());
+        return;
+      }
+
+      // IMPORTANT: profiles table is keyed by auth user id (uuid)
       const { data, error } = await supabase
         .from('profiles')
-        .select('id,is_admin,created_at')
+        .select('id,is_admin,role,created_at')
         .eq('id', uid)
-        .single();
+        .maybeSingle();
 
-      if (!error) setProfile(data);
-      else setProfile(null);
-    } catch {
+      console.log('AUTH: loadProfile result', {
+        uid,
+        hasData: Boolean(data),
+        data,
+        error: error ? { message: error.message, details: error.details, hint: error.hint, code: error.code } : null,
+      });
+
+      if (error) {
+        setProfile(null);
+        setProfileError(String(error.message || error));
+        setProfileLoadedAt(new Date().toISOString());
+        return;
+      }
+
+      if (!data) {
+        setProfile(null);
+        setProfileError('Profile row not found (RLS or missing row).');
+        setProfileLoadedAt(new Date().toISOString());
+        return;
+      }
+
+      setProfile(data);
+      setProfileError(null);
+      setProfileLoadedAt(new Date().toISOString());
+    } catch (e) {
+      console.log('AUTH: loadProfile exception', String(e?.message || e));
       setProfile(null);
+      setProfileError(String(e?.message || e));
+      setProfileLoadedAt(new Date().toISOString());
     }
   };
 
   useEffect(() => {
     let mounted = true;
 
-    // Watchdog: never allow infinite loading (e.g., bad env / hung promise)
+    // Hard watchdog so UI cannot remain loading forever
     const watchdog = setTimeout(() => {
       if (!mounted) return;
+      console.log('AUTH: watchdog fired (forcing loading=false)');
       setLoading(false);
-      if (user === undefined) setUser(null);
-    }, 2000);
+      setUser((prev) => (prev === undefined ? null : prev));
+    }, 4000);
 
     (async () => {
       try {
-        const { data } = await supabase.auth.getSession();
+        const { data, error } = await supabase.auth.getSession();
         if (!mounted) return;
-        const u = data.session?.user || null;
+
+        const s = error ? null : (data?.session || null);
+        const u = s?.user || null;
+
+        console.log('AUTH: getSession', {
+          hasSession: Boolean(s),
+          userId: u?.id || null,
+          email: u?.email || null,
+          accessTokenLen: s?.access_token ? s.access_token.length : 0,
+          error: error ? { message: error.message, status: error.status } : null,
+        });
+
+        setSession(s);
         setUser(u);
+
         await loadProfile(u?.id);
-      } catch {
+      } catch (e) {
         if (!mounted) return;
+        console.log('AUTH: getSession exception', String(e?.message || e));
+        setSession(null);
         setUser(null);
         setProfile(null);
+        setProfileError(String(e?.message || e));
+        setProfileLoadedAt(new Date().toISOString());
       } finally {
         if (!mounted) return;
         clearTimeout(watchdog);
@@ -52,25 +109,42 @@ export const AuthProvider = ({ children }) => {
       }
     })();
 
-    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, s) => {
       if (!mounted) return;
-      const u = session?.user || null;
+
+      const u = s?.user || null;
+
+      console.log('AUTH: onAuthStateChange', {
+        event,
+        hasSession: Boolean(s),
+        userId: u?.id || null,
+        email: u?.email || null,
+        accessTokenLen: s?.access_token ? s.access_token.length : 0,
+      });
+
+      setSession(s || null);
       setUser(u);
-      await loadProfile(u?.id);
+
+      // Do NOT block auth updates on profile
+      loadProfile(u?.id);
     });
 
     return () => {
       mounted = false;
       clearTimeout(watchdog);
-      try { data?.subscription?.unsubscribe(); } catch {}
+      try { sub?.subscription?.unsubscribe(); } catch {}
     };
   }, []);
 
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    console.log('AUTH: signIn', { ok: !error, error: error ? { message: error.message, status: error.status } : null });
     if (!error) {
-      setUser(data.user);
-      await loadProfile(data.user?.id);
+      const s = data?.session || null;
+      const u = s?.user || null;
+      setSession(s);
+      setUser(u);
+      loadProfile(u?.id);
     }
     return { error };
   };
@@ -81,18 +155,32 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    setSession(null);
     setUser(null);
     setProfile(null);
+    setProfileError(null);
+    setProfileLoadedAt(new Date().toISOString());
   };
 
-  const isAdmin = Boolean(profile?.is_admin);
-
   return (
-    <AuthContext.Provider value={{ user, loading, profile, isAdmin, signIn, signUp, signOut }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        accessToken,
+        user,
+        loading,
+        profile,
+        profileError,
+        profileLoadedAt,
+        isAdmin,
+        signIn,
+        signUp,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
-

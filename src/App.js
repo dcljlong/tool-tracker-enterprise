@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Equipment from './pages/Equipment';
+import EquipmentDetail from './pages/EquipmentDetail';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -13,7 +14,7 @@ function RequireAuth({ children }) {
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Loader2 size={32} style={{ animation: 'spin 1s linear infinite' }} />
+        <Loader2 size={32} />
       </div>
     );
   }
@@ -22,28 +23,51 @@ function RequireAuth({ children }) {
   return children;
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, err: null };
+  }
+  static getDerivedStateFromError(err) {
+    return { hasError: true, err };
+  }
+  componentDidCatch(err, info) {
+    console.error('APP ERROR BOUNDARY:', err, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      const msg = String(this.state.err?.message || this.state.err || 'Unknown error');
+      return (
+        <div style={{ padding: 24, fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' }}>
+          <h1 style={{ margin: 0, fontSize: 22 }}>App crashed</h1>
+          <pre style={{ marginTop: 12, background: '#111827', color: '#e5e7eb', padding: 12, borderRadius: 10, whiteSpace: 'pre-wrap' }}>
+            {msg}
+          </pre>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  const basename = window.location.pathname.startsWith('/tool-tracker-enterprise')
+    ? '/tool-tracker-enterprise'
+    : '';
+
   return (
     <AuthProvider>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
-          {/* Dev tolerance: if you land on the GH Pages base path locally, redirect */}
-          <Route path="/tool-tracker-enterprise" element={<Navigate to="/" replace />} />
-          <Route path="/tool-tracker-enterprise/" element={<Navigate to="/" replace />} />
-
-          {/* Primary routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
-          <Route path="/equipment" element={<RequireAuth><Equipment /></RequireAuth>} />
-
-          {/* GH Pages-style prefixed routes */}
-          <Route path="/tool-tracker-enterprise/login" element={<Login />} />
-          <Route path="/tool-tracker-enterprise/equipment" element={<RequireAuth><Equipment /></RequireAuth>} />
-
-          {/* Catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+      <ErrorBoundary>
+        <Router basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
+            <Route path="/equipment" element={<RequireAuth><Equipment /></RequireAuth>} />
+            <Route path="/equipment/:id" element={<RequireAuth><EquipmentDetail /></RequireAuth>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </ErrorBoundary>
     </AuthProvider>
   );
 }
