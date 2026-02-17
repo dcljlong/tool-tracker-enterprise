@@ -62,6 +62,24 @@ export default function MovementForm() {
       const { error } = await supabase.from('equipment_movements').insert(payload);
       if (error) throw error;
 
+      // ==== STATUS ENGINE: Update equipment.status ====
+      let newStatus;
+      if (eventType === 'CHECKOUT') {
+        newStatus = 'in_use';
+      } else if (eventType === 'RETURN') {
+        newStatus = 'available';
+      }
+
+      if (newStatus) {
+        // Update the equipment's status
+        const { error: statusError } = await supabase
+          .from('equipment')
+          .update({ status: newStatus })
+          .eq('id', id);
+        if (statusError) throw statusError;
+      }
+      // ==== END STATUS ENGINE ====
+
       // back to detail
       navigate(`/equipment/${id}`);
     } catch (e2) {
