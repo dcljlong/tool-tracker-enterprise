@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 
 const EVENT_TYPES = [
   { key: 'CHECKOUT', label: 'Check-out' },
-  { key: 'RETURN', label: 'Return' },
+  { key: 'STATUS_CHANGE', label: 'Return' },
 ];
 
 export default function MovementForm() {
@@ -66,7 +66,7 @@ export default function MovementForm() {
       let newStatus;
       if (eventType === 'CHECKOUT') {
         newStatus = 'in_use';
-      } else if (eventType === 'RETURN') {
+      } else if (eventType === 'STATUS_CHANGE') {
         newStatus = 'available';
       }
 
