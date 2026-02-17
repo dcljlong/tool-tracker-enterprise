@@ -69,15 +69,18 @@ export default function EquipmentDetail() {
         Accept: 'application/json',
       };
 
-      // PROBE
+      // PROBE (quick auth/RLS sanity)
       const probeUrl =
         `${urlBase}/rest/v1/equipment_movements` +
         `?select=${encodeURIComponent('id')}` +
         `&limit=1`;
       await fetchJsonWithTimeout(probeUrl, { headers }, 8000, 'Probe');
 
-      // Asset
-      const assetSelect = 'id,asset_id,qr_code_value,name,category,condition,notes,test_tag_done_date,test_tag_next_due_date,primary_photo_url,created_at';
+      // Asset (NOTE: status included)
+      const assetSelect =
+        'id,asset_id,qr_code_value,name,category,condition,notes,' +
+        'test_tag_done_date,test_tag_next_due_date,primary_photo_url,created_at,' +
+        'status';
       const assetUrl =
         `${urlBase}/rest/v1/equipment` +
         `?select=${encodeURIComponent(assetSelect)}` +
@@ -153,23 +156,12 @@ export default function EquipmentDetail() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {isAdmin && (
-            <button
-              onClick={() => navigate(`/equipment/${id}/edit`)}
-              style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #111827', background: '#111827', color: 'white', cursor: 'pointer', fontWeight: 700 }}
-            >
-              Edit
-            </button>
-          )}
-
-          <button
-            onClick={load}
-            style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600 }}
-          >
-            Refresh
-          </button>
-        </div>
+        <button
+          onClick={load}
+          style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 600 }}
+        >
+          Refresh
+        </button>
       </div>
 
       {busy && <div style={{ marginTop: 16 }}>Loading…</div>}
@@ -196,6 +188,7 @@ export default function EquipmentDetail() {
                 <div><b>Name:</b> {asset.name || '-'}</div>
                 <div><b>Asset ID:</b> {asset.asset_id || '-'}</div>
                 <div><b>QR:</b> {asset.qr_code_value || '-'}</div>
+                <div><b>Status:</b> {asset.status || '-'}</div>
               </div>
             </div>
 
@@ -217,6 +210,26 @@ export default function EquipmentDetail() {
           </div>
 
           <div style={{ marginTop: 16 }}>
+            {isAdmin && (
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
+                <div style={{ fontWeight: 800, marginRight: 8 }}>Admin Actions</div>
+
+                <button
+                  onClick={() => navigate(`/equipment/${id}/edit`)}
+                  style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #111827', background: '#111827', color: 'white', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() => navigate(`/equipment/${id}/move`)}
+                  style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Record movement
+                </button>
+              </div>
+            )}
+
             <h2 style={{ margin: '0 0 8px 0', fontSize: 16 }}>Movement Timeline</h2>
 
             {movements.length === 0 && (
@@ -235,6 +248,24 @@ export default function EquipmentDetail() {
                     </div>
                   </div>
 
+                  {m.assigned_to && (
+                    <div style={{ marginTop: 6, fontSize: 14 }}>
+                      <b>Assigned to:</b> {m.assigned_to}
+                    </div>
+                  )}
+
+                  {m.site_ref && (
+                    <div style={{ marginTop: 6, fontSize: 14 }}>
+                      <b>Site:</b> {m.site_ref}
+                    </div>
+                  )}
+
+                  {m.job_ref && (
+                    <div style={{ marginTop: 6, fontSize: 14 }}>
+                      <b>Job ref:</b> {m.job_ref}
+                    </div>
+                  )}
+
                   {m.notes && (
                     <div style={{ marginTop: 6, fontSize: 14 }}>
                       <b>Notes:</b> {m.notes}
@@ -249,11 +280,3 @@ export default function EquipmentDetail() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
