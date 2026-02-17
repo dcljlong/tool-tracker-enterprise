@@ -8,6 +8,10 @@ const EVENT_TYPES = [
   { key: 'STATUS_CHANGE', label: 'Return' },
 ];
 
+function normalizeStatus(s) {
+  return String(s || '').trim().toLowerCase();
+}
+
 export default function MovementForm() {
   const { id } = useParams(); // equipment id (uuid)
   const navigate = useNavigate();
@@ -24,63 +28,85 @@ export default function MovementForm() {
 
   const title = useMemo(() => (eventType === 'CHECKOUT' ? 'Check-out Tool' : 'Return Tool'), [eventType]);
 
+  async function getCurrentEquipmentStatus(equipmentId) {
+    const { data, error } = await supabase
+      .from('equipment')
+      .select('id,status')
+      .eq('id', equipmentId)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data?.id) throw new Error('Equipment not found.');
+    return normalizeStatus(data.status);
+  }
+
+  function validateTransition(currentStatus, action) {
+    // Tight, explicit rules to prevent impossible transitions.
+    // Adjust here if you later add additional statuses.
+    if (currentStatus === 'available') {
+      if (action !== 'CHECKOUT') return 'Tool is already available. Only Check-out is allowed.';
+      return null;
+    }
+    if (currentStatus === 'in_use') {
+      if (action !== 'STATUS_CHANGE') return 'Tool is currently in use. Only Return is allowed.';
+      return null;
+    }
+    return `Tool status "${currentStatus || 'unknown'}" cannot be transitioned from this screen.`;
+  }
+
   async function submit(e) {
     e.preventDefault();
     setErr(null);
 
-    if (!supabaseConfigOk) {
-      setErr('Supabase config missing.');
-      return;
-    }
-    if (!isAdmin) {
-      setErr('Admin access required.');
-      return;
-    }
-    if (!id) {
-      setErr('Missing equipment id.');
-      return;
-    }
+    if (!supabaseConfigOk) return setErr('Supabase config missing.');
+    if (!isAdmin) return setErr('Admin access required.');
+    if (!id) return setErr('Missing equipment id.');
 
-    const payload = {
-      equipment_id: id,
-      event_type: eventType,
-      event_at: eventAt ? new Date(eventAt).toISOString() : new Date().toISOString(),
-      assigned_to: assignedTo.trim() || null,
-      site_ref: siteRef.trim() || null,
-      job_ref: jobRef.trim() || null,
-      notes: notes.trim() || null,
-    };
+    // Basic field validation
+    const trimmedAssignedTo = assignedTo.trim();
+    const trimmedSiteRef = siteRef.trim();
+    const trimmedJobRef = jobRef.trim();
+    const trimmedNotes = notes.trim();
 
-    // Basic validation
     if (eventType === 'CHECKOUT') {
-      if (!payload.assigned_to) return setErr('Assigned To is required for check-out.');
-      if (!payload.site_ref) return setErr('Site is required for check-out.');
+      if (!trimmedAssignedTo) return setErr('Assigned To is required for check-out.');
+      if (!trimmedSiteRef) return setErr('Site is required for check-out.');
     }
 
     setSaving(true);
     try {
-      const { error } = await supabase.from('equipment_movements').insert(payload);
-      if (error) throw error;
+      // Pre-check current status to prevent invalid transitions
+      const currentStatus = await getCurrentEquipmentStatus(id);
+      const transitionErr = validateTransition(currentStatus, eventType);
+      if (transitionErr) throw new Error(transitionErr);
 
-      // ==== STATUS ENGINE: Update equipment.status ====
-      let newStatus;
-      if (eventType === 'CHECKOUT') {
-        newStatus = 'in_use';
-      } else if (eventType === 'STATUS_CHANGE') {
-        newStatus = 'available';
-      }
+      // Map action -> status
+      const newStatus = eventType === 'CHECKOUT' ? 'in_use' : 'available';
 
-      if (newStatus) {
-        // Update the equipment's status
-        const { error: statusError } = await supabase
-          .from('equipment')
-          .update({ status: newStatus })
-          .eq('id', id);
-        if (statusError) throw statusError;
-      }
-      // ==== END STATUS ENGINE ====
+      const payload = {
+        equipment_id: id,
+        event_type: eventType, // DB constraint expects STATUS_CHANGE for return
+        event_at: eventAt ? new Date(eventAt).toISOString() : new Date().toISOString(),
+        assigned_to: eventType === 'CHECKOUT' ? trimmedAssignedTo : (trimmedAssignedTo || null),
+        site_ref: eventType === 'CHECKOUT' ? trimmedSiteRef : (trimmedSiteRef || null),
+        job_ref: trimmedJobRef || null,
+        notes: trimmedNotes || null,
+      };
 
-      // back to detail
+      // 1) Insert movement
+      const { error: moveErr } = await supabase.from('equipment_movements').insert(payload);
+      if (moveErr) throw moveErr;
+
+      // 2) Update equipment status and assert 1 row updated
+      const { data: upd, error: statusErr } = await supabase
+        .from('equipment')
+        .update({ status: newStatus })
+        .eq('id', id)
+        .select('id');
+
+      if (statusErr) throw statusErr;
+      if (!Array.isArray(upd) || upd.length !== 1) throw new Error('Status update failed (no rows updated).');
+
       navigate(`/equipment/${id}`);
     } catch (e2) {
       setErr(String(e2?.message || e2));
