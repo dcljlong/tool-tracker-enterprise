@@ -68,11 +68,11 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  const p = (window.location.pathname || '').replace(/\/+$/, ''); // trim trailing slash
-  const basename =
-  process.env.NODE_ENV === 'production'
-    ? '/tool-tracker-enterprise'
-    : '';
+  // Works in all cases:
+  // - Dev (sometimes served at /tool-tracker-enterprise due to CRA homepage/PUBLIC_URL)
+  // - Prod (GH Pages at /tool-tracker-enterprise)
+  const path = window.location.pathname || '';
+  const basename = path.startsWith('/tool-tracker-enterprise') ? '/tool-tracker-enterprise' : '';
 
   return (
     <AuthProvider>
@@ -82,7 +82,6 @@ export default function App() {
             <Route path="/login" element={<Login />} />
 
             <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
-
             <Route path="/equipment" element={<RequireAuth><Equipment /></RequireAuth>} />
 
             {/* Admin-only MUST come before /equipment/:id */}
@@ -90,8 +89,8 @@ export default function App() {
             <Route path="/equipment/:id/edit" element={<RequireAuth><RequireAdmin><EquipmentForm mode="edit" /></RequireAdmin></RequireAuth>} />
 
             <Route path="/equipment/:id" element={<RequireAuth><EquipmentDetail /></RequireAuth>} />
-
             <Route path="/equipment/:id/move" element={<RequireAuth><RequireAdmin><MovementForm /></RequireAdmin></RequireAuth>} />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
@@ -99,6 +98,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
-
-
