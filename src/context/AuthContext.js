@@ -30,15 +30,7 @@ export const AuthProvider = ({ children }) => {
         .select('id,is_admin,role,created_at')
         .eq('id', uid)
         .maybeSingle();
-
-      console.log('AUTH: loadProfile result', {
-        uid,
-        hasData: Boolean(data),
-        data,
-        error: error ? { message: error.message, details: error.details, hint: error.hint, code: error.code } : null,
-      });
-
-      if (error) {
+if (error) {
         setProfile(null);
         setProfileError(String(error.message || error));
         setProfileLoadedAt(new Date().toISOString());
@@ -56,8 +48,7 @@ export const AuthProvider = ({ children }) => {
       setProfileError(null);
       setProfileLoadedAt(new Date().toISOString());
     } catch (e) {
-      console.log('AUTH: loadProfile exception', String(e?.message || e));
-      setProfile(null);
+setProfile(null);
       setProfileError(String(e?.message || e));
       setProfileLoadedAt(new Date().toISOString());
     }
@@ -69,8 +60,7 @@ export const AuthProvider = ({ children }) => {
     // Hard watchdog so UI cannot remain loading forever
     const watchdog = setTimeout(() => {
       if (!mounted) return;
-      console.log('AUTH: watchdog fired (forcing loading=false)');
-      setLoading(false);
+setLoading(false);
       setUser((prev) => (prev === undefined ? null : prev));
     }, 4000);
 
@@ -81,23 +71,13 @@ export const AuthProvider = ({ children }) => {
 
         const s = error ? null : (data?.session || null);
         const u = s?.user || null;
-
-        console.log('AUTH: getSession', {
-          hasSession: Boolean(s),
-          userId: u?.id || null,
-          email: u?.email || null,
-          accessTokenLen: s?.access_token ? s.access_token.length : 0,
-          error: error ? { message: error.message, status: error.status } : null,
-        });
-
-        setSession(s);
+setSession(s);
         setUser(u);
 
         await loadProfile(u?.id);
       } catch (e) {
         if (!mounted) return;
-        console.log('AUTH: getSession exception', String(e?.message || e));
-        setSession(null);
+setSession(null);
         setUser(null);
         setProfile(null);
         setProfileError(String(e?.message || e));
@@ -113,16 +93,7 @@ export const AuthProvider = ({ children }) => {
       if (!mounted) return;
 
       const u = s?.user || null;
-
-      console.log('AUTH: onAuthStateChange', {
-        event,
-        hasSession: Boolean(s),
-        userId: u?.id || null,
-        email: u?.email || null,
-        accessTokenLen: s?.access_token ? s.access_token.length : 0,
-      });
-
-      setSession(s || null);
+setSession(s || null);
       setUser(u);
 
       // Do NOT block auth updates on profile
@@ -138,8 +109,7 @@ export const AuthProvider = ({ children }) => {
 
   const signIn = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    console.log('AUTH: signIn', { ok: !error, error: error ? { message: error.message, status: error.status } : null });
-    if (!error) {
+if (!error) {
       const s = data?.session || null;
       const u = s?.user || null;
       setSession(s);
@@ -184,3 +154,4 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+

@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 
 // HARD BOOT MARKERS (remove later)
-console.log('BOOT: index.js executing', new Date().toISOString());
 window.__BOOT_TS__ = Date.now();
 
 // Show something even if React never mounts
@@ -27,3 +26,4 @@ window.addEventListener('unhandledrejection', (e) => {
 
 const root = ReactDOM.createRoot(rootEl);
 root.render(<App />);
+
