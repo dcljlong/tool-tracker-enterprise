@@ -156,7 +156,7 @@ export default function EquipmentDetail() {
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {isAdmin && (
             <button
-              onClick={() => navigate(/equipment//edit)}
+              onClick={() => navigate(`/equipment/${id}/edit`)}
               style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #111827', background: '#111827', color: 'white', cursor: 'pointer', fontWeight: 700 }}
             >
               Edit
@@ -249,4 +249,11 @@ export default function EquipmentDetail() {
     </div>
   );
 }
+
+
+
+
+
+
+
 

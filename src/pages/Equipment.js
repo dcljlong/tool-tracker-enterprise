@@ -17,6 +17,39 @@ function fmtLocal(dt) {
   try { return new Date(dt).toLocaleString(); } catch { return String(dt); }
 }
 
+function toDateOnlyUTC(v) {
+  if (!v) return null;
+  const s = String(v);
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+function tagStateFromNextDue(nextDue, dueSoonDays = 30) {
+  const nd = toDateOnlyUTC(nextDue);
+  if (!nd) return null;
+
+  const now = new Date();
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const dueSoonCutoff = today + (dueSoonDays * 24 * 60 * 60 * 1000);
+
+  if (nd < today) return 'expired';
+  if (nd <= dueSoonCutoff) return 'due_soon';
+  return 'ok';
+}
+
+function effectiveTagState(row) {
+  // prefer server computed if present, otherwise compute from next_due
+  return row.test_tag_state || tagStateFromNextDue(row.test_tag_next_due_date) || null;
+}
+
+function tagBadgeStyle(state) {
+  if (state === 'expired') return { border: '1px solid #b91c1c', background: '#fef2f2', color: '#b91c1c' };
+  if (state === 'due_soon') return { border: '1px solid #92400e', background: '#fffbeb', color: '#92400e' };
+  if (state === 'ok') return { border: '1px solid #065f46', background: '#ecfdf5', color: '#065f46' };
+  return { border: '1px solid #d1d5db', background: 'white', color: '#111827' };
+}
+
 export default function Equipment() {
   const navigate = useNavigate();
   const { user, loading, isAdmin } = useAuth();
@@ -83,7 +116,10 @@ export default function Equipment() {
         setRows([]);
       } else {
         const data = text ? JSON.parse(text) : [];
-        setRows(Array.isArray(data) ? data : []);
+        const arr = Array.isArray(data) ? data : [];
+        // add client-computed effective tag state (never breaks server values)
+        const hydrated = arr.map(r => ({ ...r, _tag_state: effectiveTagState(r) }));
+        setRows(hydrated);
       }
     } catch (e) {
       const msg =
@@ -103,6 +139,15 @@ export default function Equipment() {
     if (!loading && !user) { setBusy(false); setRows([]); setErr(null); }
   }, [loading, user, load]);
 
+  const counts = useMemo(() => {
+    const total = rows.length;
+    const inUse = rows.filter(r => r.computed_status === 'in_use').length;
+    const overdue = rows.filter(r => r.computed_status === 'overdue').length;
+    const expired = rows.filter(r => r._tag_state === 'expired').length;
+    const dueSoon = rows.filter(r => r._tag_state === 'due_soon').length;
+    return { total, inUse, overdue, expired, dueSoon };
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const query = (q || '').trim().toLowerCase();
     let r = rows;
@@ -110,8 +155,8 @@ export default function Equipment() {
     if (tab === 'available') r = r.filter(x => x.computed_status === 'available');
     if (tab === 'in_use') r = r.filter(x => x.computed_status === 'in_use');
     if (tab === 'overdue') r = r.filter(x => x.computed_status === 'overdue');
-    if (tab === 'expired') r = r.filter(x => x.test_tag_state === 'expired');
-    if (tab === 'due_soon') r = r.filter(x => x.test_tag_state === 'due_soon');
+    if (tab === 'expired') r = r.filter(x => x._tag_state === 'expired');
+    if (tab === 'due_soon') r = r.filter(x => x._tag_state === 'due_soon');
 
     if (!query) return r;
 
@@ -127,14 +172,6 @@ export default function Equipment() {
       return hay.includes(query);
     });
   }, [rows, tab, q]);
-
-  const counts = useMemo(() => {
-    const total = rows.length;
-    const inUse = rows.filter(r => r.computed_status === 'in_use').length;
-    const overdue = rows.filter(r => r.computed_status === 'overdue').length;
-    const expired = rows.filter(r => r.test_tag_state === 'expired').length;
-    return { total, inUse, overdue, expired };
-  }, [rows]);
 
   const debug = useMemo(() => {
     return "loading=" + String(loading) +
@@ -183,7 +220,19 @@ export default function Equipment() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(180px, 1fr))', gap: 12, marginTop: 16 }}>
+      {/* Alert band */}
+      {counts.expired > 0 && (
+        <div style={{ marginTop: 14, padding: 12, borderRadius: 12, border: '1px solid #fecaca', background: '#fef2f2', color: '#991b1b' }}>
+          <b>{counts.expired}</b> tool(s) have <b>expired</b> test tags. Review: <button
+            onClick={() => setTab('expired')}
+            style={{ marginLeft: 8, padding: '6px 10px', borderRadius: 10, border: '1px solid #b91c1c', background: 'white', cursor: 'pointer', fontWeight: 700, color: '#b91c1c' }}
+          >
+            Open Expired
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(160px, 1fr))', gap: 12, marginTop: 16 }}>
         <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}>
           <div style={{ color: '#6b7280', fontSize: 12 }}>Total Tools</div>
           <div style={{ fontSize: 24, fontWeight: 800 }}>{counts.total}</div>
@@ -199,6 +248,10 @@ export default function Equipment() {
         <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}>
           <div style={{ color: '#6b7280', fontSize: 12 }}>Expired Tags</div>
           <div style={{ fontSize: 24, fontWeight: 800 }}>{counts.expired}</div>
+        </div>
+        <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 14 }}>
+          <div style={{ color: '#6b7280', fontSize: 12 }}>Due Soon</div>
+          <div style={{ fontSize: 24, fontWeight: 800 }}>{counts.dueSoon}</div>
         </div>
       </div>
 
@@ -246,12 +299,15 @@ export default function Equipment() {
                   <div style={{ color: '#6b7280', marginTop: 2 }}>
                     Asset: {item.asset_id} · Category: {item.category || '-'} · Status: {item.computed_status}
                   </div>
+                  <div style={{ color: '#9ca3af', marginTop: 6, fontSize: 12 }}>
+                    Next test due: {fmtLocal(item.test_tag_next_due_date)}
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {item.test_tag_state && (
-                    <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, border: '1px solid #d1d5db' }}>
-                      Tag: {item.test_tag_state}
+                  {item._tag_state && (
+                    <span style={{ fontSize: 12, padding: '4px 10px', borderRadius: 999, ...tagBadgeStyle(item._tag_state) }}>
+                      Tag: {item._tag_state}
                     </span>
                   )}
 
@@ -288,12 +344,10 @@ export default function Equipment() {
           ))}
 
           {filtered.length === 0 && (
-            <div style={{ color: '#6b7280' }}>No tools found (database currently empty).</div>
+            <div style={{ color: '#6b7280' }}>No tools found.</div>
           )}
         </div>
       )}
     </div>
   );
 }
-
-

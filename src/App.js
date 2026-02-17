@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Equipment from './pages/Equipment';
 import EquipmentDetail from './pages/EquipmentDetail';
 import EquipmentForm from './pages/EquipmentForm';
+import MovementForm from './pages/MovementForm';
 
 function RequireAuth({ children }) {
   const { user, loading } = useAuth();
@@ -90,6 +91,7 @@ export default function App() {
 
             <Route path="/equipment/:id" element={<RequireAuth><EquipmentDetail /></RequireAuth>} />
 
+            <Route path="/equipment/:id/move" element={<RequireAuth><RequireAdmin><MovementForm /></RequireAdmin></RequireAuth>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
@@ -97,4 +99,6 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+
 
