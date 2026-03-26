@@ -1,0 +1,123 @@
+{
+  "identity": {
+    "name": "E1: The Anti-AI Designer",
+    "mission": "Create a high-performance, rugged, and tactical tool management system for NZ construction.",
+    "archetype": "The Performance Pro (Industrial Variant)"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Barlow Condensed, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl font-bold tracking-tight uppercase",
+      "h2": "text-3xl md:text-4xl font-semibold tracking-tight uppercase",
+      "h3": "text-2xl md:text-3xl font-semibold tracking-tight",
+      "body_lg": "text-lg leading-relaxed",
+      "body_base": "text-base leading-relaxed",
+      "caption": "text-sm text-muted-foreground uppercase tracking-widest"
+    },
+    "weights": {
+      "headings": "font-black",
+      "body": "font-normal",
+      "emphasis": "font-bold"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#F59E0B",
+        "foreground": "#000000",
+        "hover": "#D97706"
+      },
+      "secondary": {
+        "DEFAULT": "#334155",
+        "foreground": "#FFFFFF"
+      },
+      "background": {
+        "light": "#F8FAFC",
+        "dark": "#020617"
+      },
+      "surface": {
+        "light": "#FFFFFF",
+        "dark": "#0F172A"
+      },
+      "status": {
+        "success": "#10B981",
+        "warning": "#F59E0B",
+        "danger": "#E11D48",
+        "info": "#3B82F6"
+      }
+    },
+    "usage": {
+      "brand": "Use Safety Amber (#F59E0B) for primary actions (Checkout, Scan).",
+      "text": "High contrast always. Pure white on dark backgrounds, Slate-900 on light.",
+      "borders": "1px solid borders in Slate-200 (light) or Slate-800 (dark). No soft shadows."
+    }
+  },
+  "layout": {
+    "spacing_scale": "p-1, p-2, p-4, p-6, p-8, p-12, p-16, p-20, p-24, p-32",
+    "grid_system": {
+      "dashboard": "grid-cols-1 md:grid-cols-4 gap-4 md:gap-6",
+      "mobile": "flex flex-col gap-4"
+    },
+    "strategies": {
+      "bento_grid": "Use for dashboard stats. Mix 1x1, 2x1, and 2x2 cards.",
+      "bottom_sheet": "Use for primary mobile actions (Scan QR, Quick Checkout).",
+      "tall_cards": "Use for lists (Tools, Users) to optimize vertical scrolling."
+    },
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 rounded-none uppercase font-bold tracking-wider h-12 px-6",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-none uppercase font-bold tracking-wider h-12 px-6",
+      "ghost": "hover:bg-accent hover:text-accent-foreground rounded-none uppercase font-medium tracking-wide"
+    },
+    "cards": {
+      "style": "bg-card text-card-foreground border border-border rounded-sm shadow-none",
+      "hover": "hover:border-primary/50 transition-colors duration-200"
+    },
+    "inputs": {
+      "style": "rounded-none border-2 border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "status_indicators": {
+      "green": "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full text-xs font-bold uppercase",
+      "red": "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20 px-2 py-0.5 rounded-full text-xs font-bold uppercase",
+      "yellow": "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-xs font-bold uppercase"
+    }
+  },
+  "motion": {
+    "micro_interactions": "Fast and snappy. 150ms duration. No bouncy springs.",
+    "page_transitions": "Fade in with slight slide up (10px).",
+    "hover": "Transform: translateY(-1px) on interactive cards."
+  },
+  "assets": {
+    "image_urls": {
+      "hero_background": "https://images.unsplash.com/photo-1770822662831-c361f15790ea?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHwxfHxjb25zdHJ1Y3Rpb24lMjB3b3JrZXIlMjBzaXRlJTIwcGxhbiUyMHRhYmxldHxlbnwwfHx8fDE3NzI3OTEzOTJ8MA&ixlib=rb-4.1.0&q=85",
+      "tool_drill": "https://images.unsplash.com/photo-1504148455328-c376907d081c?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHwzfHxwb3dlciUyMHRvb2xzJTIwZHJpbGwlMjBzYXclMjBjb25zdHJ1Y3Rpb258ZW58MHx8fHwxNzcyNzkxMzkzfDA&ixlib=rb-4.1.0&q=85",
+      "tool_saw": "https://images.unsplash.com/photo-1720463108789-574e2a422f8f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjd8MHwxfHNlYXJjaHw0fHxwb3dlciUyMHRvb2xzJTIwZHJpbGwlMjBzYXclMjBjb25zdHJ1Y3Rpb258ZW58MHx8fHwxNzcyNzkxMzkzfDA&ixlib=rb-4.1.0&q=85",
+      "site_manager": "https://images.unsplash.com/photo-1617469766474-c421f37e01e9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzN8MHwxfHNlYXJjaHw0fHxjb25zdHJ1Y3Rpb24lMjB3b3JrZXIlMjBzaXRlJTIwcGxhbiUyMHRhYmxldHxlbnwwfHx8fDE3NzI3OTEzOTJ8MA&ixlib=rb-4.1.0&q=85"
+    },
+    "icons": "Use Lucide React (already installed) or Phosphor Icons for a more technical look."
+  },
+  "universal_guidelines": [
+    "Do not use generic centered layouts.",
+    "Use dark colors independently without gradients.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for overlays.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "Subtle grain textures and noise overlays are encouraged.",
+    "All interactive elements MUST include data-testid attribute."
+  ],
+  "instructions_to_main_agent": {
+    "step_1": "Setup Tailwind with the custom colors and fonts defined above.",
+    "step_2": "Install 'lucide-react' and 'sonner' if not present.",
+    "step_3": "Build the 'Admin Setup Wizard' first as it is the entry point.",
+    "step_4": "Implement the 'Bento Grid' dashboard with the 'Safety Amber' primary color.",
+    "step_5": "Ensure all forms use the 'rugged' input style (2px border, no radius).",
+    "step_6": "Add the 'Universal Guidelines' to every page component."
+  }
+}

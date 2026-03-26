@@ -1,0 +1,40 @@
+# Node
+node_modules/
+dist/
+build/
+coverage/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Test output
+test_reports/
+playwright-report/
+
+# Local state
+memory/
+
+# Backups
+frontend_backup_*/
+frontend_recovered_backup_*/
+
+# Env files
+.env
+.env.*
+!.env.example
