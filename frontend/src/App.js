@@ -21,8 +21,16 @@ import QRScannerPage from "@/pages/QRScannerPage";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-pulse text-muted-foreground">Loading...</div></div>;
-  if (!user) return <Navigate to="/login" />;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
@@ -31,18 +39,48 @@ function AppRoutes() {
   const [isFirstRun, setIsFirstRun] = useState(null);
 
   useEffect(() => {
-    api.get('/setup/check').then(res => setIsFirstRun(res.data.is_first_run)).catch(() => setIsFirstRun(false));
+    api
+      .get("/setup/check")
+      .then((res) => setIsFirstRun(Boolean(res.data.is_first_run)))
+      .catch(() => setIsFirstRun(false));
   }, []);
 
   if (isFirstRun === null || loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background"><div className="animate-pulse text-muted-foreground font-['Barlow_Condensed'] text-2xl uppercase tracking-wider">Loading System...</div></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-muted-foreground font-['Barlow_Condensed'] text-2xl uppercase tracking-wider">
+          Loading System...
+        </div>
+      </div>
+    );
   }
 
   return (
     <Routes>
-      <Route path="/setup" element={isFirstRun && !user ? <SetupWizard onComplete={() => setIsFirstRun(false)} /> : <Navigate to="/" />} />
-      <Route path="/login" element={user ? <Navigate to="/" /> : (isFirstRun ? <Navigate to="/setup" /> : <Login />)} />
-      <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+      <Route
+        path="/setup"
+        element={
+          isFirstRun ? (
+            <SetupWizard onComplete={() => setIsFirstRun(false)} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+
+      <Route
+        path="/login"
+        element={user ? <Navigate to="/" replace /> : isFirstRun ? <Navigate to="/setup" replace /> : <Login />}
+      />
+
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<Dashboard />} />
         <Route path="tools" element={<ToolCatalog />} />
         <Route path="tools/:toolId" element={<ToolDetail />} />
@@ -54,7 +92,8 @@ function AppRoutes() {
         <Route path="settings" element={<Settings />} />
         <Route path="notifications" element={<Notifications />} />
       </Route>
-      <Route path="*" element={<Navigate to={isFirstRun ? "/setup" : (user ? "/" : "/login")} />} />
+
+      <Route path="*" element={<Navigate to={isFirstRun ? "/setup" : user ? "/" : "/login"} replace />} />
     </Routes>
   );
 }
