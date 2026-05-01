@@ -1,47 +1,363 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/lib/auth";
-import api from "@/lib/api";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
-  Wrench, CheckCircle, AlertTriangle, Clock, Users, ShieldAlert,
-  ArrowRight, Package
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle,
+  ClipboardList,
+  Clock,
+  RefreshCw,
+  ShieldAlert,
+  ShieldCheck,
+  Users,
+  Wrench,
 } from "lucide-react";
 
-function StatCard({ title, value, icon: Icon, variant, description, onClick }) {
-  const colors = {
-    green: "border-emerald-500/30 bg-emerald-500/5",
-    red: "border-rose-500/30 bg-rose-500/5",
-    yellow: "border-amber-500/30 bg-amber-500/5",
-    blue: "border-blue-500/30 bg-blue-500/5",
-    default: "border-border",
-  };
-  const iconColors = {
-    green: "text-emerald-500",
-    red: "text-rose-500",
-    yellow: "text-amber-500",
-    blue: "text-blue-500",
-    default: "text-muted-foreground",
-  };
+import api from "@/lib/api";
+import { useAuth } from "@/lib/auth";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const ACTIVITY_ICONS = {
+  created: ClipboardList,
+  checkout: ArrowRight,
+  return: CheckCircle,
+  handover: Users,
+  maintenance: Wrench,
+  updated: Wrench,
+  deleted: AlertTriangle,
+};
+
+const VARIANT_STYLES = {
+  default: {
+    card: "border-border bg-card",
+    icon: "text-muted-foreground",
+    pill: "border-border bg-muted text-muted-foreground",
+  },
+  green: {
+    card: "border-emerald-500/30 bg-emerald-500/5",
+    icon: "text-emerald-500",
+    pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  blue: {
+    card: "border-blue-500/30 bg-blue-500/5",
+    icon: "text-blue-500",
+    pill: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  amber: {
+    card: "border-amber-500/30 bg-amber-500/5",
+    icon: "text-amber-500",
+    pill: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  red: {
+    card: "border-rose-500/30 bg-rose-500/5",
+    icon: "text-rose-500",
+    pill: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+};
+
+function numberValue(value) {
+  const parsed = Number(value || 0);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function displayName(user) {
+  return user?.name || user?.full_name || user?.email || "there";
+}
+
+function formatDateTime(value) {
+  if (!value) return "No timestamp";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleString("en-NZ", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getToolLabel(item) {
+  return item?.tool_asset_id || item?.asset_id || item?.tool_id || "Tool";
+}
+
+function StatCard({ title, value, icon: Icon, variant = "default", description, onClick }) {
+  const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.default;
+
   return (
     <Card
-      className={`rounded-sm shadow-none border-2 cursor-pointer transition-all duration-150 hover:-translate-y-0.5 ${colors[variant || "default"]}`}
+      className={`rounded-sm border-2 shadow-none transition-all duration-150 hover:-translate-y-0.5 ${styles.card} ${
+        onClick ? "cursor-pointer" : ""
+      }`}
       onClick={onClick}
-      data-testid={`stat-${title.toLowerCase().replace(/\s+/g, '-')}`}
+      data-testid={`stat-${title.toLowerCase().replace(/\s+/g, "-")}`}
     >
-      <CardContent className="pt-5 pb-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-widest font-bold text-muted-foreground">{title}</p>
-            <p className="text-3xl font-black font-['Barlow_Condensed'] mt-1">{value}</p>
-            {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
+              {title}
+            </p>
+            <p className="mt-1 font-['Barlow_Condensed'] text-4xl font-black leading-none">
+              {value}
+            </p>
+            {description && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {description}
+              </p>
+            )}
           </div>
-          <div className={`p-2 ${iconColors[variant || "default"]}`}>
-            <Icon size={24} />
+
+          <div className={`shrink-0 p-2 ${styles.icon}`}>
+            <Icon size={26} />
           </div>
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6" data-testid="dashboard-loading">
+      <div className="h-24 animate-pulse rounded-sm bg-muted" />
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        {[1, 2, 3, 4].map((item) => (
+          <div key={item} className="h-32 animate-pulse rounded-sm bg-muted" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="h-48 animate-pulse rounded-sm bg-muted" />
+        <div className="h-48 animate-pulse rounded-sm bg-muted" />
+      </div>
+    </div>
+  );
+}
+
+function EmptyPanel({ icon: Icon, title, description }) {
+  return (
+    <div className="flex min-h-[120px] flex-col items-center justify-center border border-dashed border-border bg-background/50 p-6 text-center">
+      <Icon size={28} className="mb-3 text-muted-foreground" />
+      <p className="text-sm font-bold">{title}</p>
+      <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function OverduePanel({ stats, navigate }) {
+  const overdueCount = numberValue(stats?.overdue);
+  const overdueTools = Array.isArray(stats?.overdue_tools) ? stats.overdue_tools : [];
+
+  return (
+    <Card className="rounded-sm border-2 border-amber-500/30 bg-amber-500/5 shadow-none" data-testid="overdue-section">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+          <span className="flex items-center gap-2">
+            <Clock size={20} className="text-amber-500" />
+            Overdue Returns
+          </span>
+          <Badge className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-0 text-xs font-black text-amber-600 dark:text-amber-400">
+            {overdueCount}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent>
+        {overdueTools.length > 0 ? (
+          <div className="space-y-2">
+            {overdueTools.slice(0, 5).map((item, index) => (
+              <button
+                type="button"
+                key={item.id || `${getToolLabel(item)}-${index}`}
+                onClick={() => item.tool_id && navigate(`/tools/${item.tool_id}`)}
+                className="flex w-full items-center justify-between gap-3 border border-border bg-card p-3 text-left text-sm transition-colors hover:border-amber-500/40"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-['JetBrains_Mono'] text-xs font-bold">
+                    {getToolLabel(item)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {item.tool_description || item.description || "No description"}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-black uppercase text-amber-600 dark:text-amber-400">
+                    {item.checked_out_by_name || item.user_name || "Unknown holder"}
+                  </p>
+                  {item.site && (
+                    <p className="text-[11px] text-muted-foreground">{item.site}</p>
+                  )}
+                </div>
+              </button>
+            ))}
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+              onClick={() => navigate("/reports")}
+              data-testid="view-overdue-report-btn"
+            >
+              View Report <ArrowRight size={14} className="ml-1" />
+            </Button>
+          </div>
+        ) : (
+          <EmptyPanel
+            icon={ShieldCheck}
+            title="No overdue tools"
+            description="All active tool returns are currently inside expected return dates."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SafetyPanel({ stats, navigate }) {
+  const expiringCount = numberValue(stats?.expiring_tags);
+
+  return (
+    <Card className="rounded-sm border-2 border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="expiring-tags-section">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+          <span className="flex items-center gap-2">
+            <ShieldAlert size={20} className="text-rose-500" />
+            Safety Tags
+          </span>
+          <Badge className="rounded-full border border-rose-500/20 bg-rose-500/10 px-2 py-0 text-xs font-black text-rose-600 dark:text-rose-400">
+            {expiringCount}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent>
+        {expiringCount > 0 ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {expiringCount} tool(s) have safety tags expiring within the next 14 days.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none border-2 text-xs font-black uppercase tracking-wider"
+              onClick={() => navigate("/tools")}
+              data-testid="view-expiring-btn"
+            >
+              Review Tools <ArrowRight size={14} className="ml-1" />
+            </Button>
+          </div>
+        ) : (
+          <EmptyPanel
+            icon={ShieldCheck}
+            title="Safety tags current"
+            description="No near-expiring tool safety tags are currently reported."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentActivity({ activity }) {
+  const safeActivity = Array.isArray(activity) ? activity : [];
+
+  return (
+    <Card className="rounded-sm border border-border shadow-none" data-testid="recent-activity-section">
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+          Recent Activity
+        </CardTitle>
+        <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px] uppercase">
+          {safeActivity.length} shown
+        </Badge>
+      </CardHeader>
+
+      <CardContent>
+        {safeActivity.length > 0 ? (
+          <div className="divide-y divide-border">
+            {safeActivity.slice(0, 10).map((item, index) => {
+              const Icon = ACTIVITY_ICONS[item.action] || Wrench;
+
+              return (
+                <div key={item.id || `${item.timestamp || "activity"}-${index}`} className="flex items-start gap-3 py-3 text-sm">
+                  <div className="mt-0.5 shrink-0 text-muted-foreground">
+                    <Icon size={16} />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate">
+                      <span className="font-bold">{item.user_name || "System"}</span>{" "}
+                      <span className="text-muted-foreground">
+                        {item.details || item.action || "recorded activity"}
+                      </span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {formatDateTime(item.timestamp || item.created_at || item.checkout_time)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <EmptyPanel
+            icon={ClipboardList}
+            title="No recent activity"
+            description="Tool movements, returns, maintenance, and catalogue changes will appear here."
+          />
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickActions({ navigate }) {
+  return (
+    <Card className="rounded-sm border border-border shadow-none" data-testid="quick-actions-section">
+      <CardHeader className="pb-2">
+        <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+          Quick Actions
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Button
+          className="h-11 rounded-none bg-[hsl(38,92%,50%)] text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+          onClick={() => navigate("/scan")}
+          data-testid="quick-scan-btn"
+        >
+          Scan QR <ArrowRight size={15} className="ml-2" />
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-11 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+          onClick={() => navigate("/tools")}
+          data-testid="quick-tools-btn"
+        >
+          Open Tools <ArrowRight size={15} className="ml-2" />
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-11 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+          onClick={() => navigate("/reports")}
+          data-testid="quick-reports-btn"
+        >
+          Reports <ArrowRight size={15} className="ml-2" />
+        </Button>
+
+        <Button
+          variant="outline"
+          className="h-11 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+          onClick={() => navigate("/calendar")}
+          data-testid="quick-calendar-btn"
+        >
+          Calendar <ArrowRight size={15} className="ml-2" />
+        </Button>
       </CardContent>
     </Card>
   );
@@ -50,128 +366,174 @@ function StatCard({ title, value, icon: Icon, variant, description, onClick }) {
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
   const [stats, setStats] = useState(null);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  useEffect(() => {
-    Promise.all([
-      api.get('/dashboard/stats'),
-      api.get('/dashboard/recent-activity')
-    ]).then(([statsRes, actRes]) => {
-      setStats(statsRes.data);
-      setActivity(actRes.data);
-    }).catch(() => {}).finally(() => setLoading(false));
+  const fetchDashboard = useCallback(async ({ showRefresh = false } = {}) => {
+    if (showRefresh) setRefreshing(true);
+    setErrorMessage("");
+
+    try {
+      const [statsResponse, activityResponse] = await Promise.all([
+        api.get("/dashboard/stats"),
+        api.get("/dashboard/recent-activity"),
+      ]);
+
+      setStats(statsResponse.data || {});
+      setActivity(Array.isArray(activityResponse.data) ? activityResponse.data : []);
+    } catch (error) {
+      setStats({});
+      setActivity([]);
+      setErrorMessage(error?.response?.data?.detail || "Dashboard data could not be loaded.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        {[1,2,3,4].map(i => <div key={i} className="h-24 bg-muted animate-pulse rounded-sm" />)}
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
-  const actionIcons = { created: Package, checkout: ArrowRight, return: CheckCircle, handover: Users, maintenance: Wrench, updated: Wrench, deleted: AlertTriangle };
+  const healthStatus = useMemo(() => {
+    const overdue = numberValue(stats?.overdue);
+    const expiringTags = numberValue(stats?.expiring_tags);
+    const maintenance = numberValue(stats?.maintenance_required);
+
+    if (overdue > 0 || expiringTags > 0 || maintenance > 0) {
+      return {
+        label: "Action Required",
+        variant: "red",
+        text: `${overdue + expiringTags + maintenance} item(s) need attention`,
+      };
+    }
+
+    return {
+      label: "All Clear",
+      variant: "green",
+      text: "No overdue returns, expiring tags, or maintenance alerts reported.",
+    };
+  }, [stats]);
+
+  if (loading) return <LoadingSkeleton />;
 
   return (
     <div className="space-y-8" data-testid="dashboard-page">
-      <div>
-        <h1 className="font-['Barlow_Condensed'] text-3xl md:text-4xl font-black uppercase tracking-tight">
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">Welcome back, {user?.name}</p>
-      </div>
+      <section className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-muted-foreground">
+            Tool control dashboard
+          </p>
+          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-tight md:text-5xl">
+            Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Welcome back, {displayName(user)}. Review fleet status, returns, tags, and recent movements.
+          </p>
+        </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard title="Total Tools" value={stats?.total_tools || 0} icon={Wrench} variant="default" onClick={() => navigate('/tools')} />
-        <StatCard title="Available" value={stats?.available || 0} icon={CheckCircle} variant="green" description="Ready for checkout" onClick={() => navigate('/tools?status=available')} />
-        <StatCard title="Checked Out" value={stats?.checked_out || 0} icon={ArrowRight} variant="blue" onClick={() => navigate('/tools?status=checked_out')} />
-        <StatCard title="Maintenance" value={stats?.maintenance_required || 0} icon={ShieldAlert} variant="red" description="Action required" onClick={() => navigate('/tools?status=maintenance_required')} />
-      </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge className={`${VARIANT_STYLES[healthStatus.variant].pill} rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider`}>
+            {healthStatus.label}
+          </Badge>
 
-      {/* Action Required Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="rounded-sm shadow-none border-2 border-amber-500/30 bg-amber-500/5" data-testid="overdue-section">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
-              <Clock size={18} className="text-amber-500" />
-              Overdue Returns
-              {(stats?.overdue || 0) > 0 && <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full text-xs font-bold">{stats.overdue}</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {stats?.overdue_tools?.length > 0 ? (
-              <div className="space-y-2">
-                {stats.overdue_tools.slice(0, 5).map(co => (
-                  <div key={co.id} className="flex items-center justify-between p-2 border border-border bg-card rounded-sm text-sm">
-                    <div>
-                      <span className="font-medium">{co.tool_asset_id}</span>
-                      <span className="text-muted-foreground ml-2">{co.tool_description}</span>
-                    </div>
-                    <span className="text-xs text-amber-600 dark:text-amber-400 font-bold uppercase">
-                      {co.checked_out_by_name}
-                    </span>
-                  </div>
-                ))}
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+            onClick={() => fetchDashboard({ showRefresh: true })}
+            disabled={refreshing}
+            data-testid="refresh-dashboard-btn"
+          >
+            <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </section>
+
+      {errorMessage && (
+        <Card className="rounded-sm border-2 border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="dashboard-error">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={20} className="mt-0.5 shrink-0 text-rose-500" />
+              <div>
+                <p className="text-sm font-bold">Dashboard data issue</p>
+                <p className="text-sm text-muted-foreground">{errorMessage}</p>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No overdue tools</p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-sm shadow-none border-2 border-rose-500/30 bg-rose-500/5" data-testid="expiring-tags-section">
-          <CardHeader className="pb-2">
-            <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
-              <ShieldAlert size={18} className="text-rose-500" />
-              Expiring Safety Tags
-              {(stats?.expiring_tags || 0) > 0 && <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20 rounded-full text-xs font-bold">{stats.expiring_tags}</Badge>}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              {stats?.expiring_tags > 0
-                ? `${stats.expiring_tags} tool(s) with tags expiring within 14 days`
-                : "All safety tags current"}
-            </p>
-            {stats?.expiring_tags > 0 && (
-              <Button variant="outline" size="sm" className="mt-3 rounded-none uppercase text-xs font-bold tracking-wider border-2"
-                onClick={() => navigate('/tools')} data-testid="view-expiring-btn">
-                View Tools <ArrowRight size={14} className="ml-1" />
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Recent Activity */}
-      <Card className="rounded-sm shadow-none border border-border" data-testid="recent-activity-section">
-        <CardHeader className="pb-2">
-          <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight">Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {activity.length > 0 ? (
-            <div className="space-y-2">
-              {activity.slice(0, 10).map(a => {
-                const Icon = actionIcons[a.action] || Wrench;
-                return (
-                  <div key={a.id} className="flex items-start gap-3 p-2 border-b border-border last:border-0 text-sm">
-                    <Icon size={16} className="text-muted-foreground mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="truncate"><span className="font-medium">{a.user_name}</span> <span className="text-muted-foreground">{a.details}</span></p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{new Date(a.timestamp).toLocaleString('en-NZ')}</p>
-                    </div>
-                  </div>
-                );
-              })}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No recent activity</p>
-          )}
-        </CardContent>
-      </Card>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-none border-2 text-xs font-black uppercase tracking-wider"
+              onClick={() => fetchDashboard({ showRefresh: true })}
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <StatCard
+          title="Total Tools"
+          value={numberValue(stats?.total_tools)}
+          icon={Wrench}
+          description="Tracked in catalogue"
+          onClick={() => navigate("/tools")}
+        />
+        <StatCard
+          title="Available"
+          value={numberValue(stats?.available)}
+          icon={CheckCircle}
+          variant="green"
+          description="Ready for checkout"
+          onClick={() => navigate("/tools?status=available")}
+        />
+        <StatCard
+          title="Checked Out"
+          value={numberValue(stats?.checked_out)}
+          icon={ArrowRight}
+          variant="blue"
+          description="Currently in use"
+          onClick={() => navigate("/tools?status=checked_out")}
+        />
+        <StatCard
+          title="Maintenance"
+          value={numberValue(stats?.maintenance_required)}
+          icon={ShieldAlert}
+          variant="red"
+          description="Action required"
+          onClick={() => navigate("/tools?status=maintenance_required")}
+        />
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <OverduePanel stats={stats} navigate={navigate} />
+        <SafetyPanel stats={stats} navigate={navigate} />
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
+        <RecentActivity activity={activity} />
+        <div className="space-y-4">
+          <Card className={`rounded-sm border-2 shadow-none ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
+            <CardHeader className="pb-2">
+              <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+                Fleet Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">{healthStatus.text}</p>
+            </CardContent>
+          </Card>
+
+          <QuickActions navigate={navigate} />
+        </div>
+      </section>
     </div>
   );
 }
