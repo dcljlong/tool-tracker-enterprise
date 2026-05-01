@@ -1,95 +1,419 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  AlertTriangle,
+  Bell,
+  CheckCheck,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  ShieldAlert,
+  Users,
+  Wrench,
+} from "lucide-react";
+import { toast } from "sonner";
+
 import api from "@/lib/api";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import {
-  Bell, CheckCheck, ShieldAlert, Clock, Users, Wrench, AlertTriangle
-} from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const typeConfig = {
-  tag_expiry: { icon: ShieldAlert, color: "text-rose-500", bg: "bg-rose-500/10" },
-  overdue: { icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
-  handover: { icon: Users, color: "text-blue-500", bg: "bg-blue-500/10" },
-  maintenance: { icon: Wrench, color: "text-rose-500", bg: "bg-rose-500/10" },
+const TYPE_CONFIG = {
+  tag_expiry: {
+    label: "Safety Tag",
+    icon: ShieldAlert,
+    iconClass: "text-rose-500",
+    bgClass: "bg-rose-500/10",
+    borderClass: "border-rose-500/30",
+  },
+  cert_expiry: {
+    label: "Certificate",
+    icon: ShieldAlert,
+    iconClass: "text-rose-500",
+    bgClass: "bg-rose-500/10",
+    borderClass: "border-rose-500/30",
+  },
+  overdue: {
+    label: "Overdue",
+    icon: Clock,
+    iconClass: "text-amber-500",
+    bgClass: "bg-amber-500/10",
+    borderClass: "border-amber-500/30",
+  },
+  handover: {
+    label: "Handover",
+    icon: Users,
+    iconClass: "text-blue-500",
+    bgClass: "bg-blue-500/10",
+    borderClass: "border-blue-500/30",
+  },
+  maintenance: {
+    label: "Maintenance",
+    icon: Wrench,
+    iconClass: "text-rose-500",
+    bgClass: "bg-rose-500/10",
+    borderClass: "border-rose-500/30",
+  },
+  default: {
+    label: "Alert",
+    icon: Bell,
+    iconClass: "text-muted-foreground",
+    bgClass: "bg-muted",
+    borderClass: "border-border",
+  },
 };
+
+function getTypeConfig(type) {
+  return TYPE_CONFIG[type] || TYPE_CONFIG.default;
+}
+
+function formatType(type) {
+  return getTypeConfig(type).label;
+}
+
+function formatDateTime(value) {
+  if (!value) return "No timestamp";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+
+  return date.toLocaleString("en-NZ", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function sortNewestFirst(items) {
+  return [...items].sort((a, b) => {
+    const aTime = new Date(a.created_at || 0).getTime();
+    const bTime = new Date(b.created_at || 0).getTime();
+    return bTime - aTime;
+  });
+}
+
+function StatCard({ title, value, icon: Icon, tone = "default" }) {
+  const toneClass = {
+    default: "border-border bg-card text-muted-foreground",
+    green: "border-emerald-500/30 bg-emerald-500/5 text-emerald-500",
+    amber: "border-amber-500/30 bg-amber-500/5 text-amber-500",
+    red: "border-rose-500/30 bg-rose-500/5 text-rose-500",
+  }[tone];
+
+  return (
+    <Card className={`rounded-sm border-2 shadow-none ${toneClass}`}>
+      <CardContent className="flex items-start justify-between gap-3 p-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
+            {title}
+          </p>
+          <p className="mt-1 font-['Barlow_Condensed'] text-3xl font-black leading-none text-foreground">
+            {value}
+          </p>
+        </div>
+        <Icon size={24} />
+      </CardContent>
+    </Card>
+  );
+}
+
+function LoadingList() {
+  return (
+    <div className="space-y-3" data-testid="notifications-loading">
+      {[1, 2, 3, 4].map((item) => (
+        <div key={item} className="h-20 animate-pulse rounded-sm bg-muted" />
+      ))}
+    </div>
+  );
+}
+
+function EmptyNotifications({ hasFilters }) {
+  return (
+    <Card className="rounded-sm border border-border shadow-none" data-testid="notifications-empty">
+      <CardContent className="py-12 text-center">
+        <Bell size={48} className="mx-auto mb-4 text-muted-foreground" />
+        <p className="text-lg font-bold">
+          {hasFilters ? "No notifications match the current filters" : "No notifications"}
+        </p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+          {hasFilters
+            ? "Change the status or type filters to see more alerts."
+            : "Safety tag alerts, overdue tool returns, handovers, and maintenance items will appear here."}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function Notifications() {
   const navigate = useNavigate();
+
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
-  const fetchNotifs = () => {
-    api.get('/notifications').then(res => setNotifications(res.data)).catch(() => {}).finally(() => setLoading(false));
+  const fetchNotifications = useCallback(async ({ showRefresh = false } = {}) => {
+    if (showRefresh) setRefreshing(true);
+
+    try {
+      const response = await api.get("/notifications");
+      const items = Array.isArray(response.data) ? response.data : [];
+      setNotifications(sortNewestFirst(items));
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || "Failed to load notifications.");
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  const stats = useMemo(() => {
+    const unread = notifications.filter((item) => !item.read).length;
+    const overdue = notifications.filter((item) => item.type === "overdue").length;
+    const safety = notifications.filter((item) => item.type === "tag_expiry" || item.type === "cert_expiry").length;
+
+    return {
+      total: notifications.length,
+      unread,
+      read: notifications.length - unread,
+      overdue,
+      safety,
+    };
+  }, [notifications]);
+
+  const availableTypes = useMemo(() => {
+    const uniqueTypes = Array.from(new Set(notifications.map((item) => item.type).filter(Boolean)));
+    return uniqueTypes.sort();
+  }, [notifications]);
+
+  const filteredNotifications = useMemo(() => {
+    return notifications.filter((item) => {
+      if (statusFilter === "unread" && item.read) return false;
+      if (statusFilter === "read" && !item.read) return false;
+      if (typeFilter !== "all" && item.type !== typeFilter) return false;
+      return true;
+    });
+  }, [notifications, statusFilter, typeFilter]);
+
+  const hasFilters = statusFilter !== "all" || typeFilter !== "all";
+
+  const markRead = async (notification) => {
+    if (!notification?.id || notification.read) return;
+
+    setNotifications((current) =>
+      current.map((item) => (item.id === notification.id ? { ...item, read: true } : item)),
+    );
+
+    try {
+      await api.put(`/notifications/${notification.id}/read`);
+    } catch (error) {
+      setNotifications((current) =>
+        current.map((item) => (item.id === notification.id ? { ...item, read: false } : item)),
+      );
+      toast.error(error?.response?.data?.detail || "Failed to mark notification as read.");
+    }
   };
 
-  useEffect(() => { fetchNotifs(); }, []);
+  const openNotification = async (notification) => {
+    await markRead(notification);
 
-  const markRead = async (id) => {
-    await api.put(`/notifications/${id}/read`);
-    setNotifications(notifications.map(n => n.id === id ? {...n, read: true} : n));
+    if (notification?.tool_id) {
+      navigate(`/tools/${notification.tool_id}`);
+    }
   };
 
   const markAllRead = async () => {
-    await api.put('/notifications/read-all');
-    setNotifications(notifications.map(n => ({...n, read: true})));
-    toast.success("All marked as read");
+    if (stats.unread === 0) return;
+
+    setBusyAction("mark-all");
+
+    const previous = notifications;
+
+    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+
+    try {
+      await api.put("/notifications/read-all");
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      setNotifications(previous);
+      toast.error(error?.response?.data?.detail || "Failed to mark all notifications as read.");
+    } finally {
+      setBusyAction("");
+    }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setTypeFilter("all");
+  };
 
   return (
     <div className="space-y-6" data-testid="notifications-page">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <section className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="font-['Barlow_Condensed'] text-3xl md:text-4xl font-black uppercase tracking-tight">Notifications</h1>
-          <p className="text-muted-foreground text-sm mt-1">{unreadCount} unread</p>
+          <p className="text-xs font-black uppercase tracking-[0.24em] text-muted-foreground">
+            Alerts & actions
+          </p>
+          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-tight md:text-5xl">
+            Notifications
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Review safety tag alerts, overdue returns, handovers, and maintenance notices.
+          </p>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" onClick={markAllRead} className="rounded-none uppercase text-xs font-bold tracking-wider border-2 h-10" data-testid="mark-all-read-btn">
-            <CheckCheck size={14} className="mr-2" /> Mark All Read
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+            onClick={() => fetchNotifications({ showRefresh: true })}
+            disabled={refreshing}
+            data-testid="refresh-notifications-btn"
+          >
+            <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
           </Button>
-        )}
-      </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={markAllRead}
+            disabled={stats.unread === 0 || busyAction === "mark-all"}
+            className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+            data-testid="mark-all-read-btn"
+          >
+            <CheckCheck size={14} className="mr-2" />
+            {busyAction === "mark-all" ? "Marking..." : "Mark All Read"}
+          </Button>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <StatCard title="Total" value={stats.total} icon={Bell} />
+        <StatCard title="Unread" value={stats.unread} icon={AlertTriangle} tone={stats.unread > 0 ? "amber" : "green"} />
+        <StatCard title="Read" value={stats.read} icon={CheckCircle} tone="green" />
+        <StatCard title="Safety" value={stats.safety} icon={ShieldAlert} tone={stats.safety > 0 ? "red" : "default"} />
+        <StatCard title="Overdue" value={stats.overdue} icon={Clock} tone={stats.overdue > 0 ? "amber" : "default"} />
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-[180px_220px_auto]">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="rounded-none border-2" data-testid="notification-status-filter">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="unread">Unread Only</SelectItem>
+            <SelectItem value="read">Read Only</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="rounded-none border-2" data-testid="notification-type-filter">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {availableTypes.map((type) => (
+              <SelectItem key={type} value={type}>
+                {formatType(type)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Button
+          variant="outline"
+          className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider md:w-28"
+          onClick={clearFilters}
+          disabled={!hasFilters}
+          data-testid="clear-notification-filters-btn"
+        >
+          Clear
+        </Button>
+      </section>
 
       {loading ? (
-        <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-16 bg-muted animate-pulse rounded-sm" />)}</div>
-      ) : notifications.length === 0 ? (
-        <Card className="rounded-sm shadow-none border border-border">
-          <CardContent className="py-12 text-center">
-            <Bell size={48} className="mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium">No notifications</p>
-            <p className="text-sm text-muted-foreground mt-1">You're all caught up</p>
-          </CardContent>
-        </Card>
+        <LoadingList />
+      ) : filteredNotifications.length === 0 ? (
+        <EmptyNotifications hasFilters={hasFilters} />
       ) : (
-        <div className="space-y-2">
-          {notifications.map(n => {
-            const tc = typeConfig[n.type] || typeConfig.maintenance;
-            const Icon = tc.icon;
+        <section className="space-y-2" data-testid="notification-list">
+          {filteredNotifications.map((notification) => {
+            const config = getTypeConfig(notification.type);
+            const Icon = config.icon;
+            const unread = !notification.read;
+
             return (
               <Card
-                key={n.id}
-                className={`rounded-sm shadow-none border border-border cursor-pointer transition-all duration-150 hover:border-[hsl(38,92%,50%)]/50 ${!n.read ? 'border-l-4 border-l-[hsl(38,92%,50%)]' : ''}`}
-                onClick={() => { markRead(n.id); if (n.tool_id) navigate(`/tools/${n.tool_id}`); }}
-                data-testid={`notification-${n.id}`}
+                key={notification.id}
+                className={[
+                  "rounded-sm border shadow-none transition-colors hover:border-[hsl(38,92%,50%)]/60",
+                  unread ? "border-l-4 border-l-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/5" : "border-border bg-card",
+                  notification.tool_id ? "cursor-pointer" : "",
+                ].join(" ")}
+                onClick={() => openNotification(notification)}
+                data-testid={`notification-${notification.id}`}
               >
-                <CardContent className="p-4 flex items-start gap-3">
-                  <div className={`w-8 h-8 flex items-center justify-center shrink-0 ${tc.bg}`}>
-                    <Icon size={16} className={tc.color} />
+                <CardContent className="flex items-start gap-4 p-4">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center ${config.bgClass}`}>
+                    <Icon size={18} className={config.iconClass} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${!n.read ? 'font-medium' : 'text-muted-foreground'}`}>{n.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{new Date(n.created_at).toLocaleString('en-NZ')}</p>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        className={`rounded-full border px-2 py-0 text-[10px] font-black uppercase ${config.borderClass} ${config.bgClass} ${config.iconClass}`}
+                      >
+                        {formatType(notification.type)}
+                      </Badge>
+
+                      {unread ? (
+                        <Badge className="rounded-full bg-[hsl(38,92%,50%)] px-2 py-0 text-[10px] font-black uppercase text-black">
+                          Unread
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px] uppercase">
+                          Read
+                        </Badge>
+                      )}
+
+                      {notification.tool_id && (
+                        <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px] uppercase">
+                          Tool linked
+                        </Badge>
+                      )}
+                    </div>
+
+                    <p className={`mt-2 text-sm ${unread ? "font-bold" : "text-muted-foreground"}`}>
+                      {notification.message || "Notification"}
+                    </p>
+
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {formatDateTime(notification.created_at)}
+                    </p>
                   </div>
-                  {!n.read && <div className="w-2 h-2 rounded-full bg-[hsl(38,92%,50%)] shrink-0 mt-2" />}
+
+                  {unread && (
+                    <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-[hsl(38,92%,50%)]" />
+                  )}
                 </CardContent>
               </Card>
             );
           })}
-        </div>
+        </section>
       )}
     </div>
   );
