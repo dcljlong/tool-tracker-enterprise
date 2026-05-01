@@ -1,23 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-body {
-  margin: 0;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Barlow Condensed', sans-serif;
-}
-
-code {
-  font-family: 'JetBrains Mono', monospace;
-}
 
 @layer base {
   :root {
@@ -47,6 +32,7 @@ code {
     --chart-5: 217 91% 60%;
     --radius: 0.125rem;
   }
+
   .dark {
     --background: 222 84% 5%;
     --foreground: 210 40% 98%;
@@ -74,35 +60,173 @@ code {
     --chart-5: 217 91% 60%;
     --radius: 0.125rem;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
 
-@layer base {
+  html {
+    min-height: 100%;
+    background: hsl(var(--background));
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    overflow-x: hidden;
+    background:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 28rem),
+      hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body {
+    background:
+      radial-gradient(circle at top left, hsl(var(--primary) / 0.08), transparent 30rem),
+      linear-gradient(135deg, hsl(222 84% 5%) 0%, hsl(222 60% 7%) 48%, hsl(222 84% 5%) 100%);
+  }
+
+  #root {
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Barlow Condensed', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  code,
+  pre,
+  kbd,
+  samp {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    user-select: none;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
   [data-debug-wrapper="true"] {
     display: contents !important;
   }
 }
 
+@layer components {
+  .industrial-card {
+    @apply rounded-sm border border-border bg-card shadow-none;
+  }
+
+  .industrial-panel {
+    @apply rounded-sm border-2 border-border bg-card shadow-none;
+  }
+
+  .industrial-heading {
+    @apply font-['Barlow_Condensed'] font-black uppercase tracking-tight;
+  }
+
+  .industrial-label {
+    @apply text-xs font-black uppercase tracking-[0.18em] text-muted-foreground;
+  }
+
+  .industrial-button {
+    @apply rounded-none text-xs font-black uppercase tracking-wider;
+  }
+
+  .industrial-focus {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .page-shell {
+    @apply mx-auto w-full max-w-[1600px];
+  }
+
+  .page-section {
+    @apply rounded-sm border border-border bg-card shadow-none;
+  }
+
+  .status-dot {
+    @apply h-2.5 w-2.5 rounded-full;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+  }
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
+  border-radius: 999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.5);
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  button,
+  [data-print-hidden="true"] {
+    display: none !important;
+  }
 }
