@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Calendar,
+  ExternalLink,
   FileText,
   FolderOpen,
   LayoutDashboard,
@@ -96,6 +97,15 @@ const PAGE_TITLES = {
   "/notifications": "Notifications",
 };
 
+const SUITE_LINKS = [
+  {
+    href: "http://localhost:3003/dashboard",
+    icon: LayoutDashboard,
+    label: "Long Line Diary",
+    description: "Site diary",
+  },
+];
+
 function formatRole(role) {
   if (!role) return "User";
   return role
@@ -162,6 +172,34 @@ function NavItem({ item, badge, onClick }) {
         </Badge>
       )}
     </NavLink>
+  );
+}
+
+function ExternalNavItem({ item, onClick }) {
+  const Icon = item.icon;
+
+  return (
+    <a
+      href={item.href}
+      target="_blank"
+      rel="noreferrer"
+      onClick={onClick}
+      className="group mx-3 flex items-center gap-3 rounded-2xl border-l-2 border-transparent px-3 py-3 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
+      data-testid={`suite-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+    >
+      <Icon size={18} className="shrink-0" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-bold uppercase tracking-wider">
+          {item.label}
+        </span>
+        {item.description && (
+          <span className="mt-0.5 hidden truncate text-[11px] font-normal normal-case tracking-normal text-muted-foreground xl:block">
+            {item.description}
+          </span>
+        )}
+      </span>
+      <ExternalLink size={15} className="shrink-0 text-slate-500" />
+    </a>
   );
 }
 
@@ -258,6 +296,15 @@ export default function Layout() {
           badge={unreadCount}
           onClick={onNav}
         />
+
+        <div className="mt-4 border-t border-white/10 pt-4">
+          <div className="px-4 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
+            Long Line Suite
+          </div>
+          {SUITE_LINKS.map((item) => (
+            <ExternalNavItem key={item.href} item={item} onClick={onNav} />
+          ))}
+        </div>
       </nav>
 
       {showFooterActions && (
