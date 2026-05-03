@@ -181,8 +181,6 @@ function ExternalNavItem({ item, onClick }) {
   return (
     <a
       href={item.href}
-      target="_blank"
-      rel="noreferrer"
       onClick={onClick}
       className="group mx-3 flex items-center gap-3 rounded-2xl border-l-2 border-transparent px-3 py-3 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
       data-testid={`suite-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
