@@ -137,9 +137,9 @@ function NavItem({ item, badge, onClick }) {
       data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
       className={({ isActive }) =>
         [
-          "group mx-3 flex items-center gap-3 rounded-xl border-l-2 px-3 py-3 text-sm transition-all duration-150",
+          "group mx-3 flex items-center gap-3 rounded-2xl border-l-2 px-3 py-3 text-sm transition-all duration-150",
           isActive
-            ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/14 text-[hsl(38,92%,50%)] shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
+            ? "border-[hsl(38,92%,50%)] bg-[linear-gradient(135deg,rgba(245,190,80,0.18),rgba(245,190,80,0.05))] text-[hsl(38,92%,50%)] shadow-[0_14px_34px_rgba(0,0,0,0.22)]"
             : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white",
         ].join(" ")
       }
@@ -212,7 +212,7 @@ export default function Layout() {
 
   const SidebarContent = ({ onNav }) => (
     <div className="flex h-full flex-col bg-slate-950 text-slate-100">
-      <div className="border-b border-[rgba(245,190,80,0.18)] bg-gradient-to-br from-[rgba(245,190,80,0.10)] to-transparent px-5 py-5">
+      <div className="border-b border-[rgba(245,190,80,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,1),rgba(2,6,23,1))] px-5 py-6">
         <button
           type="button"
           onClick={() => {
@@ -223,7 +223,7 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[rgba(245,190,80,0.45)] bg-black/30 text-lg font-black text-[hsl(38,92%,50%)] shadow-[0_14px_36px_rgba(0,0,0,0.28)]">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-[rgba(245,190,80,0.48)] bg-black/35 text-xl font-black text-[hsl(38,92%,50%)] shadow-[0_18px_44px_rgba(0,0,0,0.34)]">
               TT
             </div>
             <div className="min-w-0">
@@ -259,7 +259,7 @@ export default function Layout() {
         />
       </nav>
 
-      <div className="border-t border-border p-4">
+      <div className="border-t border-white/10 p-4">
         <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(38,92%,50%)] text-sm font-black text-black">
             {getUserInitial(user)}
@@ -307,7 +307,7 @@ export default function Layout() {
         <SidebarContent />
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-border bg-card px-4 lg:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-[rgba(245,190,80,0.18)] bg-slate-950 px-4 text-slate-100 lg:hidden">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button
@@ -369,7 +369,7 @@ export default function Layout() {
       </header>
 
       <div className="lg:pl-72">
-        <header className="hidden h-16 items-center justify-between border-b border-[rgba(245,190,80,0.18)] bg-white/90 px-8 backdrop-blur-md lg:flex">
+        <header className="hidden h-18 items-center justify-between border-b border-[rgba(245,190,80,0.18)] bg-[rgba(255,255,255,0.86)] px-8 backdrop-blur-xl lg:flex">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.22em] text-[hsl(38,92%,42%)]">
               Long Line Tool Tracker
@@ -409,8 +409,8 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="min-h-screen bg-gradient-to-b from-[#f7f5f1] to-[#f4f1ea] pt-14 lg:pt-0">
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-14 lg:pt-0">
+          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
             <div className="page-enter">
               <Outlet />
             </div>

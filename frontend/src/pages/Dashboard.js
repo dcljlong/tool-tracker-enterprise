@@ -63,27 +63,27 @@ const readDashboardLayout = () => {
 };
 const VARIANT_STYLES = {
   default: {
-    card: "border-[rgba(245,190,80,0.25)] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-50",
+    card: "border-[rgba(245,190,80,0.28)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.13),transparent_36%),linear-gradient(135deg,#020617,#0f172a_58%,#111827)] text-slate-50",
     icon: "text-muted-foreground",
     pill: "border-border bg-muted text-muted-foreground",
   },
   green: {
-    card: "border-emerald-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/20 text-slate-50",
+    card: "border-emerald-400/35 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.16),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(6,78,59,0.42))] text-slate-50",
     icon: "text-emerald-500",
     pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
   blue: {
-    card: "border-blue-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950/20 text-slate-50",
+    card: "border-blue-400/35 bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.15),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(30,64,175,0.34))] text-slate-50",
     icon: "text-blue-500",
     pill: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
   },
   amber: {
-    card: "border-amber-400/40 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20 text-slate-50",
+    card: "border-amber-400/40 bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(120,53,15,0.38))] text-slate-50",
     icon: "text-amber-500",
     pill: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   red: {
-    card: "border-rose-400/40 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950/25 text-slate-50",
+    card: "border-rose-400/40 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.15),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(136,19,55,0.36))] text-slate-50",
     icon: "text-rose-500",
     pill: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400",
   },
@@ -121,7 +121,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", description, 
 
   return (
     <Card
-      className={`rounded-2xl border shadow-[0_18px_50px_rgba(0,0,0,0.14)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(0,0,0,0.22)] ${styles.card} ${
+      className={`rounded-[1.35rem] border shadow-[0_20px_54px_rgba(15,23,42,0.16)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_26px_76px_rgba(15,23,42,0.24)] ${styles.card} ${
         onClick ? "cursor-pointer" : ""
       }`}
       onClick={onClick}
@@ -155,15 +155,15 @@ function StatCard({ title, value, icon: Icon, variant = "default", description, 
 function LoadingSkeleton() {
   return (
     <div className="space-y-6" data-testid="dashboard-loading">
-      <div className="h-24 animate-pulse rounded-sm bg-muted" />
+      <div className="h-24 animate-pulse rounded-2xl bg-muted" />
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[1, 2, 3, 4].map((item) => (
-          <div key={item} className="h-32 animate-pulse rounded-sm bg-muted" />
+          <div key={item} className="h-32 animate-pulse rounded-2xl bg-muted" />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="h-48 animate-pulse rounded-sm bg-muted" />
-        <div className="h-48 animate-pulse rounded-sm bg-muted" />
+        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
       </div>
     </div>
   );
@@ -184,7 +184,7 @@ function OverduePanel({ stats, navigate }) {
   const overdueTools = Array.isArray(stats?.overdue_tools) ? stats.overdue_tools : [];
 
   return (
-    <Card className="rounded-2xl border border-amber-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20 text-slate-50 shadow-[0_18px_50px_rgba(0,0,0,0.14)]" data-testid="overdue-section">
+    <Card className="rounded-[1.35rem] border border-amber-400/35 bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.15),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,rgba(120,53,15,0.34))] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="overdue-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           <span className="flex items-center gap-2">
@@ -205,7 +205,7 @@ function OverduePanel({ stats, navigate }) {
                 type="button"
                 key={item.id || `${getToolLabel(item)}-${index}`}
                 onClick={() => item.tool_id && navigate(`/tools/${item.tool_id}`)}
-                className="flex w-full items-center justify-between gap-3 border border-border bg-card p-3 text-left text-sm transition-colors hover:border-amber-500/40"
+                className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-white/10"
               >
                 <div className="min-w-0">
                   <p className="truncate font-['JetBrains_Mono'] text-xs font-bold">
@@ -252,7 +252,7 @@ function SafetyPanel({ stats, navigate }) {
   const expiringCount = numberValue(stats?.expiring_tags);
 
   return (
-    <Card className="rounded-2xl border border-rose-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950/20 text-slate-50 shadow-[0_18px_50px_rgba(0,0,0,0.14)]" data-testid="expiring-tags-section">
+    <Card className="rounded-[1.35rem] border border-rose-400/35 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.14),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,rgba(136,19,55,0.34))] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="expiring-tags-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           <span className="flex items-center gap-2">
@@ -297,7 +297,7 @@ function RecentActivity({ activity }) {
   const safeActivity = Array.isArray(activity) ? activity : [];
 
   return (
-    <Card className="rounded-2xl border border-[rgba(245,190,80,0.22)] bg-card shadow-sm" data-testid="recent-activity-section">
+    <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.26)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="recent-activity-section">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           Recent Activity
@@ -348,7 +348,7 @@ function RecentActivity({ activity }) {
 
 function QuickActions({ navigate }) {
   return (
-    <Card className="rounded-2xl border border-[rgba(245,190,80,0.24)] bg-gradient-to-br from-slate-950 via-slate-900 to-[rgba(245,190,80,0.12)] text-slate-50 shadow-[0_18px_50px_rgba(0,0,0,0.14)]" data-testid="quick-actions-section">
+    <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.28)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,rgba(120,53,15,0.28))] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="quick-actions-section">
       <CardHeader className="pb-2">
         <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           Quick Actions
@@ -471,12 +471,12 @@ export default function Dashboard() {
   return (
     <div className="space-y-8" data-testid="dashboard-page">
       {widgets.hero && (
-      <section className="rounded-[1.6rem] border border-[rgba(245,190,80,0.35)] bg-gradient-to-br from-slate-950 via-slate-900 to-black p-5 text-slate-50 shadow-[0_28px_90px_rgba(0,0,0,0.26)] lg:flex lg:items-end lg:justify-between">
+      <section className="overflow-hidden rounded-[1.75rem] border border-[rgba(245,190,80,0.38)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.22),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(30,64,175,0.16),transparent_36%),linear-gradient(135deg,#020617,#0f172a_54%,#030712)] p-6 text-slate-50 shadow-[0_30px_95px_rgba(15,23,42,0.30)] lg:flex lg:items-end lg:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.24em] text-muted-foreground">
+          <p className="text-xs font-black uppercase tracking-[0.26em] text-[hsl(38,92%,58%)]">
             Long Line Tool Tracker
           </p>
-          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-[0.06em] md:text-5xl">
+          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-[0.08em] md:text-5xl">
             Tool Control Room
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
@@ -576,7 +576,7 @@ export default function Dashboard() {
         {(widgets.fleetHealth || widgets.quickActions) && (
         <div className="space-y-4">
           {widgets.fleetHealth && (
-          <Card className={`rounded-2xl border shadow-[0_18px_50px_rgba(0,0,0,0.14)] ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
+          <Card className={`rounded-[1.35rem] border shadow-[0_20px_54px_rgba(15,23,42,0.16)] ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
             <CardHeader className="pb-2">
               <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
                 Fleet Health

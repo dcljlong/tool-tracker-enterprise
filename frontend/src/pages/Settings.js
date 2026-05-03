@@ -170,12 +170,12 @@ export default function Settings() {
   return (
     <div className="space-y-8" data-testid="settings-page">
       <div>
-        <h1 className="font-['Barlow_Condensed'] text-3xl md:text-4xl font-black uppercase tracking-tight">Settings</h1>
-        <p className="text-muted-foreground text-sm mt-1">Configure your tool tracking system</p>
+        <h1 className="font-['Barlow_Condensed'] text-3xl md:text-4xl font-black uppercase tracking-[0.08em] text-slate-950">Settings</h1>
+        <p className="mt-1 text-sm font-medium text-slate-600">Configure your tool tracking system</p>
       </div>
 
       {/* Company */}
-      <Card className="rounded-sm shadow-none border border-border">
+      <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.24)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]">
         <CardHeader className="pb-2">
           <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
             <Building size={16} /> Company
@@ -195,14 +195,14 @@ export default function Settings() {
       </Card>
 
       {/* Email Configuration */}
-      <Card className="rounded-sm shadow-none border border-border">
+      <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.24)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]">
         <CardHeader className="pb-2">
           <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
             <Mail size={16} /> Email Configuration
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">Configure email to send notifications for expiring tags, overdue tools, and handovers.</p>
+          <p className="text-sm text-slate-300">Configure email to send notifications for expiring tags, overdue tools, and handovers.</p>
           <div>
             <Label className="text-xs uppercase tracking-wider font-bold">Email Provider</Label>
             <Select value={settings?.email_provider || "sendgrid"} onValueChange={v => setSettings({...settings, email_provider: v})}>
@@ -239,14 +239,14 @@ export default function Settings() {
 
 
       {/* Dashboard Layout */}
-      <Card className="rounded-sm shadow-none border border-border">
+      <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.24)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]">
         <CardHeader className="pb-2">
           <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
             <LayoutDashboard size={16} /> Dashboard Layout
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-slate-300">
             Choose how much detail appears on your Tool Tracker dashboard. This version saves your personal layout on this device.
           </p>
 
@@ -258,14 +258,14 @@ export default function Settings() {
                 onClick={() => applyDashboardPreset(key)}
                 className={`border-2 p-4 text-left transition-all hover:border-[hsl(38,92%,50%)] ${
                   dashboardLayout.preset === key
-                    ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/10"
-                    : "border-border bg-card"
+                    ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/15 text-slate-50"
+                    : "border-white/10 bg-white/5 text-slate-100"
                 }`}
               >
                 <p className="font-['Barlow_Condensed'] text-lg font-black uppercase tracking-tight">
                   {preset.label}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-slate-400">
                   {preset.description}
                 </p>
               </button>
@@ -278,8 +278,8 @@ export default function Settings() {
                 key={widget.key}
                 className={`flex cursor-pointer items-start gap-3 border p-4 transition-all ${
                   dashboardLayout.widgets[widget.key]
-                    ? "border-[hsl(38,92%,50%)]/50 bg-[hsl(38,92%,50%)]/10"
-                    : "border-border bg-card/70 opacity-75"
+                    ? "border-[hsl(38,92%,50%)]/55 bg-[hsl(38,92%,50%)]/15 text-slate-50"
+                    : "border-white/10 bg-white/5 text-slate-300 opacity-80"
                 }`}
               >
                 <input
@@ -318,7 +318,7 @@ export default function Settings() {
         </CardContent>
       </Card>
       {/* Notification Preferences */}
-      <Card className="rounded-sm shadow-none border border-border">
+      <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.24)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]">
         <CardHeader className="pb-2">
           <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
             <Bell size={16} /> Notification Preferences
@@ -328,7 +328,7 @@ export default function Settings() {
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <p className="text-sm font-medium">Expiring Safety Tags</p>
-              <p className="text-xs text-muted-foreground">Alert when safety tags are near expiry</p>
+              <p className="text-xs text-slate-400">Alert when safety tags are near expiry</p>
             </div>
             <Switch checked={settings?.notify_tag_expiry ?? true}
               onCheckedChange={v => { setSettings({...settings, notify_tag_expiry: v}); saveSettings({ notify_tag_expiry: v }); }}
@@ -337,7 +337,7 @@ export default function Settings() {
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <p className="text-sm font-medium">Overdue Equipment</p>
-              <p className="text-xs text-muted-foreground">Alert when tools are past return date</p>
+              <p className="text-xs text-slate-400">Alert when tools are past return date</p>
             </div>
             <Switch checked={settings?.notify_overdue ?? true}
               onCheckedChange={v => { setSettings({...settings, notify_overdue: v}); saveSettings({ notify_overdue: v }); }}
@@ -346,7 +346,7 @@ export default function Settings() {
           <div className="flex items-center justify-between py-3 border-b border-border">
             <div>
               <p className="text-sm font-medium">Pending Handovers</p>
-              <p className="text-xs text-muted-foreground">Alert on tool transfer notifications</p>
+              <p className="text-xs text-slate-400">Alert on tool transfer notifications</p>
             </div>
             <Switch checked={settings?.notify_handover ?? true}
               onCheckedChange={v => { setSettings({...settings, notify_handover: v}); saveSettings({ notify_handover: v }); }}
