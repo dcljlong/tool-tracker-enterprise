@@ -9,7 +9,84 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Mail, Bell, Building, Send, AlertCircle, CheckCircle } from "lucide-react";
+import { Mail, Bell, Building, Send, LayoutDashboard, SlidersHorizontal, RotateCcw, Save } from "lucide-react";
+
+const DASHBOARD_LAYOUT_STORAGE_KEY = "tool_tracker_dashboard_layout_v1";
+
+const DASHBOARD_WIDGETS = [
+  { key: "hero", label: "Dashboard hero", helper: "Tool control status, health badge, and refresh action." },
+  { key: "stats", label: "Summary tiles", helper: "Total tools, available, checked out, and maintenance." },
+  { key: "overdueReturns", label: "Overdue returns", helper: "Tools past expected return date." },
+  { key: "safetyTags", label: "Safety tags", helper: "Expiring tags and inspection visibility." },
+  { key: "recentActivity", label: "Recent activity", helper: "Latest tool movements, returns, and changes." },
+  { key: "fleetHealth", label: "Fleet health", helper: "Overall tool fleet health summary." },
+  { key: "quickActions", label: "Quick actions", helper: "Scan QR, open tools, reports, and calendar." },
+];
+
+const PRESETS = {
+  focused: {
+    label: "Focused",
+    description: "Only urgent tool-control panels.",
+    widgets: {
+      hero: true,
+      stats: true,
+      overdueReturns: true,
+      safetyTags: true,
+      recentActivity: false,
+      fleetHealth: true,
+      quickActions: true,
+    },
+  },
+  standard: {
+    label: "Standard",
+    description: "Balanced everyday tool control dashboard.",
+    widgets: {
+      hero: true,
+      stats: true,
+      overdueReturns: true,
+      safetyTags: true,
+      recentActivity: true,
+      fleetHealth: true,
+      quickActions: true,
+    },
+  },
+  full: {
+    label: "Full Control Room",
+    description: "Everything visible for managers and audit review.",
+    widgets: {
+      hero: true,
+      stats: true,
+      overdueReturns: true,
+      safetyTags: true,
+      recentActivity: true,
+      fleetHealth: true,
+      quickActions: true,
+    },
+  },
+};
+
+const DEFAULT_DASHBOARD_LAYOUT = {
+  preset: "standard",
+  widgets: PRESETS.standard.widgets,
+};
+
+function readDashboardLayout() {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY);
+    if (!raw) return DEFAULT_DASHBOARD_LAYOUT;
+
+    const parsed = JSON.parse(raw);
+    return {
+      preset: parsed.preset || "standard",
+      widgets: {
+        ...DEFAULT_DASHBOARD_LAYOUT.widgets,
+        ...(parsed.widgets || {}),
+      },
+    };
+  } catch {
+    return DEFAULT_DASHBOARD_LAYOUT;
+  }
+}
 
 export default function Settings() {
   const { user } = useAuth();
@@ -17,6 +94,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingEmail, setTestingEmail] = useState(false);
+  const [dashboardLayout, setDashboardLayout] = useState(readDashboardLayout);
 
   useEffect(() => {
     api.get('/settings').then(res => setSettings(res.data)).catch(() => {}).finally(() => setLoading(false));
@@ -33,6 +111,45 @@ export default function Settings() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const applyDashboardPreset = (presetKey) => {
+    const preset = PRESETS[presetKey];
+    if (!preset) return;
+
+    const next = {
+      preset: presetKey,
+      widgets: { ...preset.widgets },
+    };
+
+    setDashboardLayout(next);
+    localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event("tool-tracker-dashboard-layout-updated"));
+    toast.success(`${preset.label} dashboard layout applied`);
+  };
+
+  const toggleDashboardWidget = (widgetKey) => {
+    setDashboardLayout(prev => ({
+      preset: "custom",
+      widgets: {
+        ...prev.widgets,
+        [widgetKey]: !prev.widgets[widgetKey],
+      },
+    }));
+  };
+
+  const saveDashboardLayout = () => {
+    localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, JSON.stringify(dashboardLayout));
+    window.dispatchEvent(new Event("tool-tracker-dashboard-layout-updated"));
+    toast.success("Dashboard layout saved");
+  };
+
+  const resetDashboardLayout = () => {
+    const next = DEFAULT_DASHBOARD_LAYOUT;
+    setDashboardLayout(next);
+    localStorage.setItem(DASHBOARD_LAYOUT_STORAGE_KEY, JSON.stringify(next));
+    window.dispatchEvent(new Event("tool-tracker-dashboard-layout-updated"));
+    toast.success("Dashboard layout reset to Standard");
   };
 
   const testEmail = async () => {
@@ -120,6 +237,86 @@ export default function Settings() {
         </CardContent>
       </Card>
 
+
+      {/* Dashboard Layout */}
+      <Card className="rounded-sm shadow-none border border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
+            <LayoutDashboard size={16} /> Dashboard Layout
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <p className="text-sm text-muted-foreground">
+            Choose how much detail appears on your Tool Tracker dashboard. This version saves your personal layout on this device.
+          </p>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            {Object.entries(PRESETS).map(([key, preset]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => applyDashboardPreset(key)}
+                className={`border-2 p-4 text-left transition-all hover:border-[hsl(38,92%,50%)] ${
+                  dashboardLayout.preset === key
+                    ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/10"
+                    : "border-border bg-card"
+                }`}
+              >
+                <p className="font-['Barlow_Condensed'] text-lg font-black uppercase tracking-tight">
+                  {preset.label}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {preset.description}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            {DASHBOARD_WIDGETS.map(widget => (
+              <label
+                key={widget.key}
+                className={`flex cursor-pointer items-start gap-3 border p-4 transition-all ${
+                  dashboardLayout.widgets[widget.key]
+                    ? "border-[hsl(38,92%,50%)]/50 bg-[hsl(38,92%,50%)]/10"
+                    : "border-border bg-card/70 opacity-75"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={!!dashboardLayout.widgets[widget.key]}
+                  onChange={() => toggleDashboardWidget(widget.key)}
+                  className="mt-1 h-4 w-4 accent-[hsl(38,92%,50%)]"
+                />
+                <span>
+                  <span className="block text-xs font-black uppercase tracking-[0.16em]">
+                    {widget.label}
+                  </span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {widget.helper}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={saveDashboardLayout}
+              className="bg-[hsl(38,92%,50%)] text-black hover:bg-[hsl(38,92%,45%)] rounded-none uppercase text-xs font-bold tracking-wider h-10"
+            >
+              <Save size={14} className="mr-2" /> Save Layout
+            </Button>
+            <Button
+              variant="outline"
+              onClick={resetDashboardLayout}
+              className="rounded-none uppercase text-xs font-bold tracking-wider border-2 h-10"
+            >
+              <RotateCcw size={14} className="mr-2" /> Reset Standard
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
       {/* Notification Preferences */}
       <Card className="rounded-sm shadow-none border border-border">
         <CardHeader className="pb-2">

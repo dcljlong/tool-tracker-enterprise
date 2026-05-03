@@ -29,6 +29,38 @@ const ACTIVITY_ICONS = {
   deleted: AlertTriangle,
 };
 
+const DASHBOARD_LAYOUT_STORAGE_KEY = "tool_tracker_dashboard_layout_v1";
+
+const DEFAULT_DASHBOARD_LAYOUT = {
+  preset: "standard",
+  widgets: {
+    hero: true,
+    stats: true,
+    overdueReturns: true,
+    safetyTags: true,
+    recentActivity: true,
+    fleetHealth: true,
+    quickActions: true,
+  },
+};
+
+const readDashboardLayout = () => {
+  try {
+    const raw = localStorage.getItem(DASHBOARD_LAYOUT_STORAGE_KEY);
+    if (!raw) return DEFAULT_DASHBOARD_LAYOUT;
+
+    const parsed = JSON.parse(raw);
+    return {
+      preset: parsed.preset || DEFAULT_DASHBOARD_LAYOUT.preset,
+      widgets: {
+        ...DEFAULT_DASHBOARD_LAYOUT.widgets,
+        ...(parsed.widgets || {}),
+      },
+    };
+  } catch {
+    return DEFAULT_DASHBOARD_LAYOUT;
+  }
+};
 const VARIANT_STYLES = {
   default: {
     card: "border-border bg-card",
@@ -372,6 +404,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [dashboardLayout, setDashboardLayout] = useState(readDashboardLayout);
 
   const fetchDashboard = useCallback(async ({ showRefresh = false } = {}) => {
     if (showRefresh) setRefreshing(true);
@@ -399,6 +432,18 @@ export default function Dashboard() {
     fetchDashboard();
   }, [fetchDashboard]);
 
+  useEffect(() => {
+    const refreshLayout = () => setDashboardLayout(readDashboardLayout());
+
+    window.addEventListener("storage", refreshLayout);
+    window.addEventListener("tool-tracker-dashboard-layout-updated", refreshLayout);
+
+    return () => {
+      window.removeEventListener("storage", refreshLayout);
+      window.removeEventListener("tool-tracker-dashboard-layout-updated", refreshLayout);
+    };
+  }, []);
+
   const healthStatus = useMemo(() => {
     const overdue = numberValue(stats?.overdue);
     const expiringTags = numberValue(stats?.expiring_tags);
@@ -421,8 +466,11 @@ export default function Dashboard() {
 
   if (loading) return <LoadingSkeleton />;
 
+  const widgets = dashboardLayout.widgets || DEFAULT_DASHBOARD_LAYOUT.widgets;
+
   return (
     <div className="space-y-8" data-testid="dashboard-page">
+      {widgets.hero && (
       <section className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.24em] text-muted-foreground">
@@ -454,6 +502,7 @@ export default function Dashboard() {
           </Button>
         </div>
       </section>
+      )}
 
       {errorMessage && (
         <Card className="rounded-sm border-2 border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="dashboard-error">
@@ -478,6 +527,7 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {widgets.stats && (
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           title="Total Tools"
@@ -511,15 +561,21 @@ export default function Dashboard() {
           onClick={() => navigate("/tools?status=maintenance_required")}
         />
       </section>
+      )}
 
+      {(widgets.overdueReturns || widgets.safetyTags) && (
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <OverduePanel stats={stats} navigate={navigate} />
-        <SafetyPanel stats={stats} navigate={navigate} />
+        {widgets.overdueReturns && <OverduePanel stats={stats} navigate={navigate} />}
+        {widgets.safetyTags && <SafetyPanel stats={stats} navigate={navigate} />}
       </section>
+      )}
 
+      {(widgets.recentActivity || widgets.fleetHealth || widgets.quickActions) && (
       <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-        <RecentActivity activity={activity} />
+        {widgets.recentActivity && <RecentActivity activity={activity} />}
+        {(widgets.fleetHealth || widgets.quickActions) && (
         <div className="space-y-4">
+          {widgets.fleetHealth && (
           <Card className={`rounded-sm border-2 shadow-none ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
             <CardHeader className="pb-2">
               <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
@@ -530,10 +586,13 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">{healthStatus.text}</p>
             </CardContent>
           </Card>
+          )}
 
-          <QuickActions navigate={navigate} />
+          {widgets.quickActions && <QuickActions navigate={navigate} />}
         </div>
+        )}
       </section>
+      )}
     </div>
   );
 }
