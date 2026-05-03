@@ -22,6 +22,7 @@ import { useTheme } from "@/lib/theme";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import toolTrackerLogo from "@/assets/tool-tracker-logo.png";
 
 const NAV_ITEMS = [
   {
@@ -210,7 +211,7 @@ export default function Layout() {
 
   const closeMobileNav = () => setMobileOpen(false);
 
-  const SidebarContent = ({ onNav }) => (
+  const SidebarContent = ({ onNav, showFooterActions = false }) => (
     <div className="flex h-full flex-col bg-slate-950 text-slate-100">
       <div className="border-b border-[rgba(245,190,80,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,1),rgba(2,6,23,1))] px-5 py-6">
         <button
@@ -223,8 +224,8 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.35rem] border border-[rgba(245,190,80,0.48)] bg-black/35 text-xl font-black text-[hsl(38,92%,50%)] shadow-[0_18px_44px_rgba(0,0,0,0.34)]">
-              TT
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[1.35rem] border border-[rgba(245,190,80,0.48)] bg-black/35 shadow-[0_18px_44px_rgba(0,0,0,0.34)]">
+              <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-full w-full object-contain p-1" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.26em] text-[hsl(38,92%,50%)]">
@@ -259,45 +260,47 @@ export default function Layout() {
         />
       </nav>
 
-      <div className="border-t border-white/10 p-4">
-        <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(38,92%,50%)] text-sm font-black text-black">
-            {getUserInitial(user)}
+      {showFooterActions && (
+        <div className="border-t border-white/10 p-4">
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(38,92%,50%)] text-sm font-black text-black">
+              {getUserInitial(user)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold text-slate-100">{displayName}</p>
+              <p className="truncate text-xs uppercase tracking-wider text-slate-400">
+                {roleLabel}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold text-slate-100">{displayName}</p>
-            <p className="truncate text-xs uppercase tracking-wider text-slate-400">
-              {roleLabel}
-            </p>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-slate-200 hover:bg-white/5"
+              data-testid="theme-toggle"
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+              <span className="ml-2">{theme === "dark" ? "Light" : "Dark"}</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-red-300 hover:bg-red-500/10"
+              data-testid="logout-btn"
+            >
+              <LogOut size={14} />
+              <span className="ml-2">Log out</span>
+            </Button>
           </div>
         </div>
-
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={toggleTheme}
-            className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-slate-200 hover:bg-white/5"
-            data-testid="theme-toggle"
-          >
-            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-            <span className="ml-2">{theme === "dark" ? "Light" : "Dark"}</span>
-          </Button>
-
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-red-300 hover:bg-red-500/10"
-            data-testid="logout-btn"
-          >
-            <LogOut size={14} />
-            <span className="ml-2">Log out</span>
-          </Button>
-        </div>
-      </div>
+      )}
     </div>
   );
 
@@ -321,7 +324,7 @@ export default function Layout() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0">
-            <SidebarContent onNav={closeMobileNav} />
+            <SidebarContent onNav={closeMobileNav} showFooterActions />
           </SheetContent>
         </Sheet>
 
@@ -380,6 +383,30 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              className="h-9 rounded-xl border border-slate-300 bg-slate-900 px-3 text-xs font-bold uppercase tracking-wider text-slate-100 hover:bg-slate-800"
+              data-testid="theme-toggle"
+            >
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+              <span className="ml-2">{theme === "dark" ? "Light" : "Dark"}</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="h-9 rounded-xl border border-slate-300 bg-slate-900 px-3 text-xs font-bold uppercase tracking-wider text-slate-100 hover:bg-slate-800"
+              data-testid="logout-btn"
+            >
+              <LogOut size={15} className="mr-2" />
+              Log out
+            </Button>
+
             <Button
               type="button"
               variant="outline"

@@ -154,7 +154,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", description, 
 
 function LoadingSkeleton() {
   return (
-    <div className="space-y-6" data-testid="dashboard-loading">
+    <div className="space-y-5 pt-1" data-testid="dashboard-loading">
       <div className="h-24 animate-pulse rounded-2xl bg-muted" />
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[1, 2, 3, 4].map((item) => (
@@ -205,7 +205,7 @@ function OverduePanel({ stats, navigate }) {
                 type="button"
                 key={item.id || `${getToolLabel(item)}-${index}`}
                 onClick={() => item.tool_id && navigate(`/tools/${item.tool_id}`)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-white/10"
+                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-white/10"
               >
                 <div className="min-w-0">
                   <p className="truncate font-['JetBrains_Mono'] text-xs font-bold">
@@ -366,7 +366,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+          className="h-11 rounded-2xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
           onClick={() => navigate("/tools")}
           data-testid="quick-tools-btn"
         >
@@ -375,7 +375,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+          className="h-11 rounded-2xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
           onClick={() => navigate("/reports")}
           data-testid="quick-reports-btn"
         >
@@ -384,7 +384,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+          className="h-11 rounded-2xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
           onClick={() => navigate("/calendar")}
           data-testid="quick-calendar-btn"
         >
@@ -468,40 +468,82 @@ export default function Dashboard() {
 
   const widgets = dashboardLayout.widgets || DEFAULT_DASHBOARD_LAYOUT.widgets;
 
+  const heroMetrics = [
+    {
+      label: "Total Tools",
+      value: numberValue(stats?.total_tools),
+    },
+    {
+      label: "Available",
+      value: numberValue(stats?.available),
+    },
+    {
+      label: "Checked Out",
+      value: numberValue(stats?.checked_out),
+    },
+    {
+      label: "Maintenance",
+      value: numberValue(stats?.maintenance_required),
+    },
+  ];
+
   return (
-    <div className="space-y-8" data-testid="dashboard-page">
+    <div
+      className="-mx-4 -my-6 min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_30%),linear-gradient(180deg,#050816_0%,#070707_100%)] px-4 py-5 text-slate-50 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-my-7 lg:px-8 lg:py-6"
+      data-testid="dashboard-page"
+    >
       {widgets.hero && (
-      <section className="overflow-hidden rounded-[1.75rem] border border-[rgba(245,190,80,0.38)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.22),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(30,64,175,0.16),transparent_36%),linear-gradient(135deg,#020617,#0f172a_54%,#030712)] p-6 text-slate-50 shadow-[0_30px_95px_rgba(15,23,42,0.30)] lg:flex lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.26em] text-[hsl(38,92%,58%)]">
-            Long Line Tool Tracker
-          </p>
-          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-[0.08em] md:text-5xl">
-            Tool Control Room
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-            Welcome back, {displayName(user)}. Review fleet status, returns, tags, and recent movements from one clear tool-control dashboard.
-          </p>
-        </div>
+        <section className="overflow-hidden rounded-[1.6rem] border border-[rgba(245,190,80,0.38)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.20),transparent_32%),linear-gradient(135deg,#020617,#0f172a_54%,#030712)] shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
+          <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[1.4fr_0.9fr]">
+            <div className="flex flex-col justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.26em] text-[hsl(38,92%,58%)]">
+                  Long Line Tool Tracker
+                </p>
+                <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-[0.08em] md:text-5xl">
+                  Tool Control Room
+                </h1>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  Welcome back, {displayName(user)}. Review fleet status, returns, tags, and recent movements from one clear tool-control dashboard.
+                </p>
+              </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className={`${VARIANT_STYLES[healthStatus.variant].pill} rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider`}>
-            {healthStatus.label}
-          </Badge>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Badge className={`${VARIANT_STYLES[healthStatus.variant].pill} rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider`}>
+                  {healthStatus.label}
+                </Badge>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 rounded-xl border border-white/20 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
-            onClick={() => fetchDashboard({ showRefresh: true })}
-            disabled={refreshing}
-            data-testid="refresh-dashboard-btn"
-          >
-            <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        </div>
-      </section>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-xl border border-white/20 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+                  onClick={() => fetchDashboard({ showRefresh: true })}
+                  disabled={refreshing}
+                  data-testid="refresh-dashboard-btn"
+                >
+                  <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {heroMetrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-xl border border-white/10 bg-black/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                    {metric.label}
+                  </p>
+                  <p className="mt-2 font-['Barlow_Condensed'] text-3xl font-black leading-none text-[hsl(38,92%,58%)]">
+                    {metric.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       )}
 
       {errorMessage && (
@@ -518,7 +560,7 @@ export default function Dashboard() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-none border-2 text-xs font-black uppercase tracking-wider"
+              className="rounded-xl border-2 text-xs font-black uppercase tracking-wider"
               onClick={() => fetchDashboard({ showRefresh: true })}
             >
               Retry
@@ -528,70 +570,67 @@ export default function Dashboard() {
       )}
 
       {widgets.stats && (
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <StatCard
-          title="Total Tools"
-          value={numberValue(stats?.total_tools)}
-          icon={Wrench}
-          description="Tracked in catalogue"
-          onClick={() => navigate("/tools")}
-        />
-        <StatCard
-          title="Available"
-          value={numberValue(stats?.available)}
-          icon={CheckCircle}
-          variant="green"
-          description="Ready for checkout"
-          onClick={() => navigate("/tools?status=available")}
-        />
-        <StatCard
-          title="Checked Out"
-          value={numberValue(stats?.checked_out)}
-          icon={ArrowRight}
-          variant="blue"
-          description="Currently in use"
-          onClick={() => navigate("/tools?status=checked_out")}
-        />
-        <StatCard
-          title="Maintenance"
-          value={numberValue(stats?.maintenance_required)}
-          icon={ShieldAlert}
-          variant="red"
-          description="Action required"
-          onClick={() => navigate("/tools?status=maintenance_required")}
-        />
-      </section>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Total Tools"
+            value={numberValue(stats?.total_tools)}
+            icon={Wrench}
+            description="Tracked in catalogue"
+            onClick={() => navigate("/tools")}
+          />
+          <StatCard
+            title="Available"
+            value={numberValue(stats?.available)}
+            icon={CheckCircle}
+            variant="green"
+            description="Ready for checkout"
+            onClick={() => navigate("/tools?status=available")}
+          />
+          <StatCard
+            title="Checked Out"
+            value={numberValue(stats?.checked_out)}
+            icon={ArrowRight}
+            variant="blue"
+            description="Currently in use"
+            onClick={() => navigate("/tools?status=checked_out")}
+          />
+          <StatCard
+            title="Maintenance"
+            value={numberValue(stats?.maintenance_required)}
+            icon={ShieldAlert}
+            variant="red"
+            description="Action required"
+            onClick={() => navigate("/tools?status=maintenance_required")}
+          />
+        </section>
       )}
 
       {(widgets.overdueReturns || widgets.safetyTags) && (
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {widgets.overdueReturns && <OverduePanel stats={stats} navigate={navigate} />}
-        {widgets.safetyTags && <SafetyPanel stats={stats} navigate={navigate} />}
-      </section>
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {widgets.overdueReturns && <OverduePanel stats={stats} navigate={navigate} />}
+          {widgets.safetyTags && <SafetyPanel stats={stats} navigate={navigate} />}
+        </section>
       )}
 
-      {(widgets.recentActivity || widgets.fleetHealth || widgets.quickActions) && (
-      <section className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-        {widgets.recentActivity && <RecentActivity activity={activity} />}
-        {(widgets.fleetHealth || widgets.quickActions) && (
-        <div className="space-y-4">
+      {widgets.recentActivity && <RecentActivity activity={activity} />}
+
+      {(widgets.fleetHealth || widgets.quickActions) && (
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {widgets.fleetHealth && (
-          <Card className={`rounded-[1.35rem] border shadow-[0_20px_54px_rgba(15,23,42,0.16)] ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
-            <CardHeader className="pb-2">
-              <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
-                Fleet Health
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">{healthStatus.text}</p>
-            </CardContent>
-          </Card>
+            <Card className={`rounded-2xl border shadow-[0_20px_54px_rgba(0,0,0,0.22)] ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+                  Fleet Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{healthStatus.text}</p>
+              </CardContent>
+            </Card>
           )}
 
           {widgets.quickActions && <QuickActions navigate={navigate} />}
-        </div>
-        )}
-      </section>
+        </section>
       )}
     </div>
   );
