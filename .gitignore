@@ -38,3 +38,6 @@ frontend_recovered_backup_*/
 .env
 .env.*
 !.env.example
+
+# Local development backups
+stable_backups/
