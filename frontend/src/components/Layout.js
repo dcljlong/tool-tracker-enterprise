@@ -137,10 +137,10 @@ function NavItem({ item, badge, onClick }) {
       data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
       className={({ isActive }) =>
         [
-          "group flex items-center gap-3 border-l-2 px-4 py-3 text-sm transition-colors duration-150",
+          "group mx-3 flex items-center gap-3 rounded-xl border-l-2 px-3 py-3 text-sm transition-all duration-150",
           isActive
-            ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/10 text-[hsl(38,92%,50%)]"
-            : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
+            ? "border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)]/14 text-[hsl(38,92%,50%)] shadow-[0_10px_28px_rgba(0,0,0,0.16)]"
+            : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white",
         ].join(" ")
       }
     >
@@ -211,8 +211,8 @@ export default function Layout() {
   const closeMobileNav = () => setMobileOpen(false);
 
   const SidebarContent = ({ onNav }) => (
-    <div className="flex h-full flex-col bg-card">
-      <div className="border-b border-border px-5 py-5">
+    <div className="flex h-full flex-col bg-slate-950 text-slate-100">
+      <div className="border-b border-[rgba(245,190,80,0.18)] bg-gradient-to-br from-[rgba(245,190,80,0.10)] to-transparent px-5 py-5">
         <button
           type="button"
           onClick={() => {
@@ -223,15 +223,18 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center border-2 border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)] text-sm font-black text-black">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[rgba(245,190,80,0.45)] bg-black/30 text-lg font-black text-[hsl(38,92%,50%)] shadow-[0_14px_36px_rgba(0,0,0,0.28)]">
               TT
             </div>
             <div className="min-w-0">
-              <h1 className="truncate font-['Barlow_Condensed'] text-xl font-black uppercase tracking-widest text-[hsl(38,92%,50%)]">
+              <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.26em] text-[hsl(38,92%,50%)]">
+                Long Line
+              </p>
+              <h1 className="truncate font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-widest text-slate-50">
                 Tool Tracker
               </h1>
-              <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
-                NZ Construction
+              <p className="truncate text-xs uppercase tracking-wider text-slate-400">
+                Tool & Asset Control
               </p>
             </div>
           </div>
@@ -257,13 +260,13 @@ export default function Layout() {
       </nav>
 
       <div className="border-t border-border p-4">
-        <div className="mb-3 flex items-center gap-3 rounded-sm border border-border bg-background/60 p-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center bg-[hsl(38,92%,50%)] text-sm font-black text-black">
+        <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(38,92%,50%)] text-sm font-black text-black">
             {getUserInitial(user)}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-bold">{displayName}</p>
-            <p className="truncate text-xs uppercase tracking-wider text-muted-foreground">
+            <p className="truncate text-sm font-bold text-slate-100">{displayName}</p>
+            <p className="truncate text-xs uppercase tracking-wider text-slate-400">
               {roleLabel}
             </p>
           </div>
@@ -275,7 +278,7 @@ export default function Layout() {
             variant="ghost"
             size="sm"
             onClick={toggleTheme}
-            className="h-9 rounded-none border border-border text-xs uppercase tracking-wider"
+            className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-slate-200 hover:bg-white/5"
             data-testid="theme-toggle"
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -287,11 +290,11 @@ export default function Layout() {
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="h-9 rounded-none border border-border text-xs uppercase tracking-wider text-destructive"
+            className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-red-300 hover:bg-red-500/10"
             data-testid="logout-btn"
           >
             <LogOut size={14} />
-            <span className="ml-2">Logout</span>
+            <span className="ml-2">Log out</span>
           </Button>
         </div>
       </div>
@@ -300,7 +303,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-border bg-card lg:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-[rgba(245,190,80,0.18)] bg-slate-950 lg:flex">
         <SidebarContent />
       </aside>
 
@@ -366,12 +369,12 @@ export default function Layout() {
       </header>
 
       <div className="lg:pl-72">
-        <header className="hidden h-16 items-center justify-between border-b border-border bg-card px-8 lg:flex">
+        <header className="hidden h-16 items-center justify-between border-b border-[rgba(245,190,80,0.18)] bg-white/90 px-8 backdrop-blur-md lg:flex">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-muted-foreground">
-              Tool Tracker
+            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[hsl(38,92%,42%)]">
+              Long Line Tool Tracker
             </p>
-            <h2 className="font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-tight">
+            <h2 className="font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-[0.06em]">
               {currentPageTitle}
             </h2>
           </div>
@@ -381,7 +384,7 @@ export default function Layout() {
               type="button"
               variant="outline"
               size="sm"
-              className="h-9 rounded-none border-2 text-xs font-bold uppercase tracking-wider"
+              className="h-9 rounded-xl border-2 text-xs font-bold uppercase tracking-wider"
               onClick={() => navigate("/notifications")}
               data-testid="desktop-notifications-btn"
             >
@@ -396,7 +399,7 @@ export default function Layout() {
 
             <Button
               type="button"
-              className="h-9 rounded-none bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+              className="h-9 rounded-xl bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black shadow-sm hover:bg-[hsl(38,92%,45%)]"
               onClick={() => navigate("/scan")}
               data-testid="desktop-scan-btn"
             >
@@ -406,7 +409,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="min-h-screen pt-14 lg:pt-0">
+        <main className="min-h-screen bg-gradient-to-b from-[#f7f5f1] to-[#f4f1ea] pt-14 lg:pt-0">
           <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <div className="page-enter">
               <Outlet />

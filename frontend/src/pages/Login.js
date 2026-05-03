@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import loginBackground from "../assets/login-background.jpg";
 
 export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,7 @@ export default function Login() {
     try {
       await login(email, password);
       toast.success("Logged in");
+      navigate("/", { replace: true });
     } catch (err) {
       toast.error(err.response?.data?.detail || "Login failed");
     } finally {

@@ -63,27 +63,27 @@ const readDashboardLayout = () => {
 };
 const VARIANT_STYLES = {
   default: {
-    card: "border-border bg-card",
+    card: "border-[rgba(245,190,80,0.25)] bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-50",
     icon: "text-muted-foreground",
     pill: "border-border bg-muted text-muted-foreground",
   },
   green: {
-    card: "border-emerald-500/30 bg-emerald-500/5",
+    card: "border-emerald-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950/20 text-slate-50",
     icon: "text-emerald-500",
     pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
   blue: {
-    card: "border-blue-500/30 bg-blue-500/5",
+    card: "border-blue-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950/20 text-slate-50",
     icon: "text-blue-500",
     pill: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
   },
   amber: {
-    card: "border-amber-500/30 bg-amber-500/5",
+    card: "border-amber-400/40 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20 text-slate-50",
     icon: "text-amber-500",
     pill: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   red: {
-    card: "border-rose-500/30 bg-rose-500/5",
+    card: "border-rose-400/40 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950/25 text-slate-50",
     icon: "text-rose-500",
     pill: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400",
   },
@@ -121,7 +121,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", description, 
 
   return (
     <Card
-      className={`rounded-sm border-2 shadow-none transition-all duration-150 hover:-translate-y-0.5 ${styles.card} ${
+      className={`rounded-2xl border shadow-[0_18px_50px_rgba(0,0,0,0.14)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_24px_70px_rgba(0,0,0,0.22)] ${styles.card} ${
         onClick ? "cursor-pointer" : ""
       }`}
       onClick={onClick}
@@ -137,7 +137,7 @@ function StatCard({ title, value, icon: Icon, variant = "default", description, 
               {value}
             </p>
             {description && (
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-slate-300">
                 {description}
               </p>
             )}
@@ -184,7 +184,7 @@ function OverduePanel({ stats, navigate }) {
   const overdueTools = Array.isArray(stats?.overdue_tools) ? stats.overdue_tools : [];
 
   return (
-    <Card className="rounded-sm border-2 border-amber-500/30 bg-amber-500/5 shadow-none" data-testid="overdue-section">
+    <Card className="rounded-2xl border border-amber-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950/20 text-slate-50 shadow-[0_18px_50px_rgba(0,0,0,0.14)]" data-testid="overdue-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           <span className="flex items-center gap-2">
@@ -252,7 +252,7 @@ function SafetyPanel({ stats, navigate }) {
   const expiringCount = numberValue(stats?.expiring_tags);
 
   return (
-    <Card className="rounded-sm border-2 border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="expiring-tags-section">
+    <Card className="rounded-2xl border border-rose-400/35 bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950/20 text-slate-50 shadow-[0_18px_50px_rgba(0,0,0,0.14)]" data-testid="expiring-tags-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           <span className="flex items-center gap-2">
@@ -297,7 +297,7 @@ function RecentActivity({ activity }) {
   const safeActivity = Array.isArray(activity) ? activity : [];
 
   return (
-    <Card className="rounded-sm border border-border shadow-none" data-testid="recent-activity-section">
+    <Card className="rounded-2xl border border-[rgba(245,190,80,0.22)] bg-card shadow-sm" data-testid="recent-activity-section">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           Recent Activity
@@ -348,7 +348,7 @@ function RecentActivity({ activity }) {
 
 function QuickActions({ navigate }) {
   return (
-    <Card className="rounded-sm border border-border shadow-none" data-testid="quick-actions-section">
+    <Card className="rounded-2xl border border-[rgba(245,190,80,0.24)] bg-gradient-to-br from-slate-950 via-slate-900 to-[rgba(245,190,80,0.12)] text-slate-50 shadow-[0_18px_50px_rgba(0,0,0,0.14)]" data-testid="quick-actions-section">
       <CardHeader className="pb-2">
         <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
           Quick Actions
@@ -357,7 +357,7 @@ function QuickActions({ navigate }) {
 
       <CardContent className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Button
-          className="h-11 rounded-none bg-[hsl(38,92%,50%)] text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+          className="h-11 rounded-xl bg-[hsl(38,92%,50%)] text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
           onClick={() => navigate("/scan")}
           data-testid="quick-scan-btn"
         >
@@ -366,7 +366,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+          className="h-11 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
           onClick={() => navigate("/tools")}
           data-testid="quick-tools-btn"
         >
@@ -375,7 +375,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+          className="h-11 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
           onClick={() => navigate("/reports")}
           data-testid="quick-reports-btn"
         >
@@ -384,7 +384,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+          className="h-11 rounded-xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
           onClick={() => navigate("/calendar")}
           data-testid="quick-calendar-btn"
         >
@@ -471,16 +471,16 @@ export default function Dashboard() {
   return (
     <div className="space-y-8" data-testid="dashboard-page">
       {widgets.hero && (
-      <section className="flex flex-col gap-4 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
+      <section className="rounded-[1.6rem] border border-[rgba(245,190,80,0.35)] bg-gradient-to-br from-slate-950 via-slate-900 to-black p-5 text-slate-50 shadow-[0_28px_90px_rgba(0,0,0,0.26)] lg:flex lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.24em] text-muted-foreground">
-            Tool control dashboard
+            Long Line Tool Tracker
           </p>
-          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-tight md:text-5xl">
-            Dashboard
+          <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-[0.06em] md:text-5xl">
+            Tool Control Room
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Welcome back, {displayName(user)}. Review fleet status, returns, tags, and recent movements.
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+            Welcome back, {displayName(user)}. Review fleet status, returns, tags, and recent movements from one clear tool-control dashboard.
           </p>
         </div>
 
@@ -492,7 +492,7 @@ export default function Dashboard() {
           <Button
             variant="outline"
             size="sm"
-            className="h-9 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+            className="h-9 rounded-xl border border-white/20 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
             onClick={() => fetchDashboard({ showRefresh: true })}
             disabled={refreshing}
             data-testid="refresh-dashboard-btn"
@@ -505,7 +505,7 @@ export default function Dashboard() {
       )}
 
       {errorMessage && (
-        <Card className="rounded-sm border-2 border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="dashboard-error">
+        <Card className="rounded-2xl border border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="dashboard-error">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertTriangle size={20} className="mt-0.5 shrink-0 text-rose-500" />
@@ -576,7 +576,7 @@ export default function Dashboard() {
         {(widgets.fleetHealth || widgets.quickActions) && (
         <div className="space-y-4">
           {widgets.fleetHealth && (
-          <Card className={`rounded-sm border-2 shadow-none ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
+          <Card className={`rounded-2xl border shadow-[0_18px_50px_rgba(0,0,0,0.14)] ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
             <CardHeader className="pb-2">
               <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
                 Fleet Health
