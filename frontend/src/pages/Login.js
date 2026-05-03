@@ -15,7 +15,11 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) { toast.error("Enter email and password"); return; }
+    if (!email || !password) {
+      toast.error("Enter email and password");
+      return;
+    }
+
     setLoading(true);
     try {
       await login(email, password);
@@ -37,22 +41,28 @@ export default function Login() {
       <div className="tt-login-overlay" aria-hidden="true" />
 
       <main className="tt-login-card" aria-label="Tool Tracker login">
-        <div className="tt-login-brand">
-          <button
-            type="button"
-            className="tt-login-logo"
-            tabIndex={-1}
-            aria-hidden="true"
-          >
-            <img src={toolTrackerLogo} alt="Tool Tracker logo" />
-          </button>
-
+        <div className="tt-login-heading">
           <p className="tt-login-kicker">A Long Line product</p>
           <h1 data-testid="login-title">Tool Tracker</h1>
           <p>Tool & Asset Control</p>
         </div>
 
         <form onSubmit={handleSubmit} className="tt-login-form">
+          <button
+            type="submit"
+            className="tt-logo-submit"
+            disabled={loading}
+            aria-label="Sign in to Tool Tracker"
+            title="Sign in to Tool Tracker"
+          >
+            <img src={toolTrackerLogo} alt="Tool Tracker logo" />
+          </button>
+
+          <div className="tt-login-title-block">
+            <h2>Construction Tool Control</h2>
+            <p>{loading ? "Authenticating..." : "Enter your credentials, then click Sign in."}</p>
+          </div>
+
           <div>
             <Label className="tt-login-label">Email</Label>
             <Input
@@ -71,6 +81,7 @@ export default function Login() {
               data-testid="login-password"
               type="password"
               className="tt-login-input"
+              placeholder="Enter password"
               value={password}
               onChange={e => setPassword(e.target.value)}
             />
@@ -82,7 +93,7 @@ export default function Login() {
             className="tt-login-submit"
             data-testid="login-submit-btn"
           >
-            {loading ? "Signing in..." : <><LogIn size={16} className="mr-2" /> Sign in</>}
+            {loading ? "Authenticating..." : <><LogIn size={16} className="mr-2" /> Sign in</>}
           </button>
         </form>
 
