@@ -184,7 +184,7 @@ function ExternalNavItem({ item, onClick }) {
       onClick={onClick}
       className="group mx-3 flex items-center gap-3 rounded-2xl border-l-2 border-transparent px-3 py-3 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
       data-testid={`suite-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-    >
+     target="_blank" rel="noopener noreferrer">
       <Icon size={18} className="shrink-0" />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold uppercase tracking-wider">
