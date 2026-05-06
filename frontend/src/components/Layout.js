@@ -99,7 +99,7 @@ const PAGE_TITLES = {
 
 const SUITE_LINKS = [
   {
-    href: "http://localhost:3003/dashboard",
+    href: process.env.REACT_APP_LONG_LINE_DIARY_URL || "http://localhost:3003/dashboard",
     icon: LayoutDashboard,
     label: "Long Line Diary",
     description: "Site diary",
