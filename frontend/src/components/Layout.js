@@ -104,6 +104,18 @@ const SUITE_LINKS = [
     label: "Long Line Diary",
     description: "Site diary",
   },
+  {
+    href: process.env.REACT_APP_TIMESHEET_MANAGER_URL || "http://localhost:3001",
+    icon: Calendar,
+    label: "Timesheet Manager",
+    description: "Labour control",
+  },
+  {
+    href: process.env.REACT_APP_FITOUTOS_URL || "http://localhost:3004",
+    icon: FileText,
+    label: "FitoutOS",
+    description: "Programme control",
+  },
 ];
 
 function formatRole(role) {
@@ -148,7 +160,7 @@ function NavItem({ item, badge, onClick }) {
       data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
       className={({ isActive }) =>
         [
-          "group mx-3 flex items-center gap-3 rounded-2xl border-l-2 px-3 py-3 text-sm transition-all duration-150",
+          "group mx-2 flex items-center gap-3 rounded-xl border-l-2 px-3 py-2.5 text-sm transition-all duration-150",
           isActive
             ? "border-[hsl(38,92%,50%)] bg-[linear-gradient(135deg,rgba(245,190,80,0.18),rgba(245,190,80,0.05))] text-[hsl(38,92%,50%)] shadow-[0_14px_34px_rgba(0,0,0,0.22)]"
             : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white",
@@ -161,7 +173,7 @@ function NavItem({ item, badge, onClick }) {
           {item.label}
         </span>
         {item.description && (
-          <span className="mt-0.5 hidden truncate text-[11px] font-normal normal-case tracking-normal text-muted-foreground xl:block">
+          <span className="hidden">
             {item.description}
           </span>
         )}
@@ -182,7 +194,7 @@ function ExternalNavItem({ item, onClick }) {
     <a
       href={item.href}
       onClick={onClick}
-      className="group mx-3 flex items-center gap-3 rounded-2xl border-l-2 border-transparent px-3 py-3 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
+      className="group mx-2 flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
       data-testid={`suite-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
      target="_blank" rel="noopener noreferrer">
       <Icon size={18} className="shrink-0" />
@@ -191,7 +203,7 @@ function ExternalNavItem({ item, onClick }) {
           {item.label}
         </span>
         {item.description && (
-          <span className="mt-0.5 hidden truncate text-[11px] font-normal normal-case tracking-normal text-muted-foreground xl:block">
+          <span className="hidden">
             {item.description}
           </span>
         )}
@@ -247,9 +259,9 @@ export default function Layout() {
 
   const closeMobileNav = () => setMobileOpen(false);
 
-  const SidebarContent = ({ onNav, showFooterActions = false }) => (
-    <div className="flex h-full flex-col bg-slate-950 text-slate-100">
-      <div className="border-b border-[rgba(245,190,80,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,1),rgba(2,6,23,1))] px-5 py-6">
+  const SidebarContent = ({ onNav, showFooterActions = true }) => (
+    <div className="flex h-full flex-col overflow-hidden bg-slate-950 text-slate-100">
+      <div className="border-b border-[rgba(245,190,80,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,1),rgba(2,6,23,1))] px-4 py-4">
         <button
           type="button"
           onClick={() => {
@@ -260,17 +272,15 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[1.35rem] border border-[rgba(245,190,80,0.48)] bg-black/35 shadow-[0_18px_44px_rgba(0,0,0,0.34)]">
-              <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-full w-full object-contain p-1" />
-            </div>
+            <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-12 w-12 shrink-0 object-contain" />
             <div className="min-w-0">
-              <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.26em] text-[hsl(38,92%,50%)]">
+              <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.24em] text-[hsl(38,92%,50%)]">
                 Long Line
               </p>
-              <h1 className="truncate font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-widest text-slate-50">
+              <h1 className="truncate font-['Barlow_Condensed'] text-xl font-black uppercase tracking-widest text-slate-50">
                 Tool Tracker
               </h1>
-              <p className="truncate text-xs uppercase tracking-wider text-slate-400">
+              <p className="truncate text-[11px] uppercase tracking-wider text-slate-400">
                 Tool & Asset Control
               </p>
             </div>
@@ -278,7 +288,7 @@ export default function Layout() {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto py-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto py-3 scrollbar-thin">
         {visibleNavItems.map((item) => (
           <NavItem key={item.to} item={item} onClick={onNav} />
         ))}
@@ -295,7 +305,7 @@ export default function Layout() {
           onClick={onNav}
         />
 
-        <div className="mt-4 border-t border-white/10 pt-4">
+        <div className="mt-3 border-t border-white/10 pt-3">
           <div className="px-4 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
             Long Line Suite
           </div>
@@ -306,7 +316,7 @@ export default function Layout() {
       </nav>
 
       {showFooterActions && (
-        <div className="border-t border-white/10 p-4">
+        <div className="border-t border-white/10 p-3">
           <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(38,92%,50%)] text-sm font-black text-black">
               {getUserInitial(user)}
@@ -351,8 +361,8 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-[rgba(245,190,80,0.18)] bg-slate-950 lg:flex">
-        <SidebarContent />
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-[rgba(245,190,80,0.18)] bg-slate-950 lg:flex">
+        <SidebarContent showFooterActions />
       </aside>
 
       <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-[rgba(245,190,80,0.18)] bg-slate-950 px-4 text-slate-100 lg:hidden">
@@ -416,73 +426,10 @@ export default function Layout() {
         </Button>
       </header>
 
-      <div className="lg:pl-72">
-        <header className="hidden h-18 items-center justify-between border-b border-[rgba(245,190,80,0.18)] bg-[rgba(255,255,255,0.86)] px-8 backdrop-blur-xl lg:flex">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.22em] text-[hsl(38,92%,42%)]">
-              Long Line Tool Tracker
-            </p>
-            <h2 className="font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-[0.06em]">
-              {currentPageTitle}
-            </h2>
-          </div>
+      <div className="lg:pl-64">
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={toggleTheme}
-              className="h-9 rounded-xl border border-slate-300 bg-slate-900 px-3 text-xs font-bold uppercase tracking-wider text-slate-100 hover:bg-slate-800"
-              data-testid="theme-toggle"
-            >
-              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-              <span className="ml-2">{theme === "dark" ? "Light" : "Dark"}</span>
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="h-9 rounded-xl border border-slate-300 bg-slate-900 px-3 text-xs font-bold uppercase tracking-wider text-slate-100 hover:bg-slate-800"
-              data-testid="logout-btn"
-            >
-              <LogOut size={15} className="mr-2" />
-              Log out
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 rounded-xl border-2 text-xs font-bold uppercase tracking-wider"
-              onClick={() => navigate("/notifications")}
-              data-testid="desktop-notifications-btn"
-            >
-              <Bell size={15} className="mr-2" />
-              Alerts
-              {unreadCount > 0 && (
-                <Badge className="ml-2 rounded-full bg-[hsl(346,77%,50%)] px-1.5 py-0 text-xs text-white">
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              className="h-9 rounded-xl bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black shadow-sm hover:bg-[hsl(38,92%,45%)]"
-              onClick={() => navigate("/scan")}
-              data-testid="desktop-scan-btn"
-            >
-              <ScanLine size={15} className="mr-2" />
-              Scan QR
-            </Button>
-          </div>
-        </header>
-
-        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-14 lg:pt-0">
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-14 dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
+          <div className="w-full px-4 py-5 sm:px-5 lg:px-6 lg:py-6">
             <div className="page-enter">
               <Outlet />
             </div>
@@ -492,3 +439,4 @@ export default function Layout() {
     </div>
   );
 }
+
