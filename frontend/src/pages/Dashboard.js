@@ -63,29 +63,34 @@ const readDashboardLayout = () => {
 };
 const VARIANT_STYLES = {
   default: {
-    card: "border-[rgba(245,190,80,0.28)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.13),transparent_36%),linear-gradient(135deg,#020617,#0f172a_58%,#111827)] text-slate-50",
-    icon: "text-muted-foreground",
-    pill: "border-border bg-muted text-muted-foreground",
+    card: "border-slate-200 bg-white hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
+    iconBox: "border-amber-300 bg-amber-100 text-amber-600 dark:border-primary/30 dark:bg-primary/10 dark:text-primary",
+    support: "text-amber-700 dark:text-primary",
+    pill: "border-primary/30 bg-primary/10 text-primary",
   },
   green: {
-    card: "border-emerald-400/35 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.16),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(6,78,59,0.42))] text-slate-50",
-    icon: "text-emerald-500",
-    pill: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    card: "border-slate-200 bg-white hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
+    iconBox: "border-emerald-300 bg-emerald-100 text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400",
+    support: "text-amber-700 dark:text-primary",
+    pill: "border-primary/30 bg-primary/10 text-primary",
   },
   blue: {
-    card: "border-blue-400/35 bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.15),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(30,64,175,0.34))] text-slate-50",
-    icon: "text-blue-500",
-    pill: "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    card: "border-slate-200 bg-white hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
+    iconBox: "border-blue-300 bg-blue-100 text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-400",
+    support: "text-amber-700 dark:text-primary",
+    pill: "border-primary/30 bg-primary/10 text-primary",
   },
   amber: {
-    card: "border-amber-400/40 bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(120,53,15,0.38))] text-slate-50",
-    icon: "text-amber-500",
-    pill: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    card: "border-amber-200 bg-white hover:border-amber-300 dark:border-primary/35 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-primary/10 dark:hover:border-primary",
+    iconBox: "border-amber-300 bg-amber-100 text-amber-600 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400",
+    support: "text-amber-700 dark:text-primary",
+    pill: "border-primary/30 bg-primary/10 text-primary",
   },
   red: {
-    card: "border-rose-400/40 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.15),transparent_38%),linear-gradient(135deg,#020617,#0f172a_62%,rgba(136,19,55,0.36))] text-slate-50",
-    icon: "text-rose-500",
-    pill: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+    card: "border-red-200 bg-red-50 hover:border-red-300 dark:border-red-400/45 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-red-950/15 dark:hover:border-red-300",
+    iconBox: "border-red-300 bg-red-100 text-red-600 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-500",
+    support: "text-red-700 dark:text-red-500",
+    pill: "border-red-300 bg-red-100 text-red-700 dark:border-red-400/55 dark:bg-red-500/15 dark:text-red-100",
   },
 };
 
@@ -120,50 +125,56 @@ function StatCard({ title, value, icon: Icon, variant = "default", description, 
   const styles = VARIANT_STYLES[variant] || VARIANT_STYLES.default;
 
   return (
-    <Card
-      className={`rounded-[1.35rem] border shadow-[0_20px_54px_rgba(15,23,42,0.16)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_26px_76px_rgba(15,23,42,0.24)] ${styles.card} ${
-        onClick ? "cursor-pointer" : ""
-      }`}
+    <button
+      type="button"
       onClick={onClick}
+      className="w-full text-left"
       data-testid={`stat-${title.toLowerCase().replace(/\s+/g, "-")}`}
     >
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
-              {title}
-            </p>
-            <p className="mt-1 font-['Barlow_Condensed'] text-4xl font-black leading-none">
-              {value}
-            </p>
-            {description && (
-              <p className="mt-2 text-xs text-slate-300">
-                {description}
+      <Card className={`ops-card overflow-hidden rounded-xl border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:shadow-[0_18px_50px_rgba(0,0,0,0.14)] dark:hover:shadow-[0_24px_70px_rgba(0,0,0,0.22)] ${styles.card}`}>
+        <CardContent className="p-0">
+          <div className="flex items-start justify-between gap-3 px-5 pt-5">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground">
+                {title}
               </p>
-            )}
+              <p className="mt-2 font-['Barlow_Condensed'] text-4xl font-black leading-none text-slate-950 dark:text-slate-50">
+                {value}
+              </p>
+            </div>
+
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border shadow-sm ${styles.iconBox}`}>
+              <Icon size={28} strokeWidth={1.75} />
+            </div>
           </div>
 
-          <div className={`shrink-0 p-2 ${styles.icon}`}>
-            <Icon size={26} />
+          <div className="mt-4 flex items-center justify-between border-t border-slate-200 px-5 py-3 dark:border-white/10">
+            <span className={`text-[11px] font-bold uppercase tracking-[0.16em] ${styles.support}`}>
+              Live overview
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground">
+              Open
+              <ArrowRight className="h-3.5 w-3.5" />
+            </span>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </button>
   );
 }
 
 function LoadingSkeleton() {
   return (
     <div className="space-y-5 pt-1" data-testid="dashboard-loading">
-      <div className="h-24 animate-pulse rounded-2xl bg-muted" />
+      <div className="h-24 animate-pulse rounded-md bg-muted" />
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[1, 2, 3, 4].map((item) => (
-          <div key={item} className="h-32 animate-pulse rounded-2xl bg-muted" />
+          <div key={item} className="h-32 animate-pulse rounded-md bg-muted" />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
-        <div className="h-48 animate-pulse rounded-2xl bg-muted" />
+        <div className="h-48 animate-pulse rounded-md bg-muted" />
+        <div className="h-48 animate-pulse rounded-md bg-muted" />
       </div>
     </div>
   );
@@ -171,10 +182,10 @@ function LoadingSkeleton() {
 
 function EmptyPanel({ icon: Icon, title, description }) {
   return (
-    <div className="flex min-h-[120px] flex-col items-center justify-center border border-dashed border-border bg-background/50 p-6 text-center">
-      <Icon size={28} className="mb-3 text-muted-foreground" />
+    <div className="flex min-h-[120px] flex-col items-center justify-center rounded-md border border-dashed border-[rgba(150,118,66,0.20)] bg-white p-6 text-center">
+      <Icon size={28} className="mb-3 text-slate-600" />
       <p className="text-sm font-bold">{title}</p>
-      <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
+      <p className="mt-1 max-w-sm text-xs text-slate-600">{description}</p>
     </div>
   );
 }
@@ -184,9 +195,9 @@ function OverduePanel({ stats, navigate }) {
   const overdueTools = Array.isArray(stats?.overdue_tools) ? stats.overdue_tools : [];
 
   return (
-    <Card className="rounded-[1.35rem] border border-amber-400/35 bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.15),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,rgba(120,53,15,0.34))] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="overdue-section">
+    <Card className="rounded-xl border border-amber-300/45 bg-white text-slate-950 shadow-sm" data-testid="overdue-section">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+        <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-lg font-black uppercase tracking-[0.09em]">
           <span className="flex items-center gap-2">
             <Clock size={20} className="text-amber-500" />
             Overdue Returns
@@ -205,13 +216,13 @@ function OverduePanel({ stats, navigate }) {
                 type="button"
                 key={item.id || `${getToolLabel(item)}-${index}`}
                 onClick={() => item.tool_id && navigate(`/tools/${item.tool_id}`)}
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-white/10"
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-[rgba(150,118,66,0.22)] bg-white p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-[#f3eadb]"
               >
                 <div className="min-w-0">
                   <p className="truncate font-['JetBrains_Mono'] text-xs font-bold">
                     {getToolLabel(item)}
                   </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-xs text-slate-600">
                     {item.tool_description || item.description || "No description"}
                   </p>
                 </div>
@@ -220,7 +231,7 @@ function OverduePanel({ stats, navigate }) {
                     {item.checked_out_by_name || item.user_name || "Unknown holder"}
                   </p>
                   {item.site && (
-                    <p className="text-[11px] text-muted-foreground">{item.site}</p>
+                    <p className="text-[11px] text-slate-600">{item.site}</p>
                   )}
                 </div>
               </button>
@@ -252,9 +263,9 @@ function SafetyPanel({ stats, navigate }) {
   const expiringCount = numberValue(stats?.expiring_tags);
 
   return (
-    <Card className="rounded-[1.35rem] border border-rose-400/35 bg-[radial-gradient(circle_at_top_left,rgba(251,113,133,0.14),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,rgba(136,19,55,0.34))] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="expiring-tags-section">
+    <Card className="rounded-xl border border-rose-300/40 bg-white text-slate-950 shadow-sm" data-testid="expiring-tags-section">
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+        <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-lg font-black uppercase tracking-[0.09em]">
           <span className="flex items-center gap-2">
             <ShieldAlert size={20} className="text-rose-500" />
             Safety Tags
@@ -268,7 +279,7 @@ function SafetyPanel({ stats, navigate }) {
       <CardContent>
         {expiringCount > 0 ? (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-slate-600">
               {expiringCount} tool(s) have safety tags expiring within the next 14 days.
             </p>
             <Button
@@ -297,9 +308,9 @@ function RecentActivity({ activity }) {
   const safeActivity = Array.isArray(activity) ? activity : [];
 
   return (
-    <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.26)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="recent-activity-section">
+    <Card className="rounded-xl border border-[rgba(150,118,66,0.26)] bg-white text-slate-950 shadow-sm" data-testid="recent-activity-section">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+        <CardTitle className="font-['Barlow_Condensed'] text-xl font-black uppercase tracking-[0.10em]">
           Recent Activity
         </CardTitle>
         <Badge variant="outline" className="rounded-full px-2 py-0 text-[10px] uppercase">
@@ -315,18 +326,18 @@ function RecentActivity({ activity }) {
 
               return (
                 <div key={item.id || `${item.timestamp || "activity"}-${index}`} className="flex items-start gap-3 py-3 text-sm">
-                  <div className="mt-0.5 shrink-0 text-muted-foreground">
+                  <div className="mt-0.5 shrink-0 text-slate-600">
                     <Icon size={16} />
                   </div>
 
                   <div className="min-w-0 flex-1">
                     <p className="truncate">
                       <span className="font-bold">{item.user_name || "System"}</span>{" "}
-                      <span className="text-muted-foreground">
+                      <span className="text-slate-600">
                         {item.details || item.action || "recorded activity"}
                       </span>
                     </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-xs text-slate-600">
                       {formatDateTime(item.timestamp || item.created_at || item.checkout_time)}
                     </p>
                   </div>
@@ -348,9 +359,9 @@ function RecentActivity({ activity }) {
 
 function QuickActions({ navigate }) {
   return (
-    <Card className="rounded-[1.35rem] border border-[rgba(245,190,80,0.28)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,rgba(120,53,15,0.28))] text-slate-50 shadow-[0_20px_54px_rgba(15,23,42,0.16)]" data-testid="quick-actions-section">
+    <Card className="rounded-xl border border-[rgba(150,118,66,0.26)] bg-white text-slate-950 shadow-sm" data-testid="quick-actions-section">
       <CardHeader className="pb-2">
-        <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+        <CardTitle className="font-['Barlow_Condensed'] text-xl font-black uppercase tracking-[0.10em]">
           Quick Actions
         </CardTitle>
       </CardHeader>
@@ -366,7 +377,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-2xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb]"
           onClick={() => navigate("/tools")}
           data-testid="quick-tools-btn"
         >
@@ -375,7 +386,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-2xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb]"
           onClick={() => navigate("/reports")}
           data-testid="quick-reports-btn"
         >
@@ -384,7 +395,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-2xl border border-white/15 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb]"
           onClick={() => navigate("/calendar")}
           data-testid="quick-calendar-btn"
         >
@@ -489,34 +500,34 @@ export default function Dashboard() {
 
   return (
     <div
-      className="-mx-4 -my-6 min-h-screen space-y-5 bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_30%),linear-gradient(180deg,#050816_0%,#070707_100%)] px-4 py-5 text-slate-50 sm:-mx-6 sm:px-6 lg:-mx-8 lg:-my-7 lg:px-8 lg:py-6"
+      className="space-y-5 pt-8 text-slate-950 dark:text-slate-100"
       data-testid="dashboard-page"
     >
       {widgets.hero && (
-        <section className="overflow-hidden rounded-[1.6rem] border border-[rgba(245,190,80,0.38)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.20),transparent_32%),linear-gradient(135deg,#020617,#0f172a_54%,#030712)] shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
-          <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[1.4fr_0.9fr]">
-            <div className="flex flex-col justify-between">
+        <section className="relative z-0 rounded-none border-0 bg-transparent shadow-none dark:overflow-hidden dark:rounded-[1.6rem] dark:border dark:border-primary/35 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-black dark:shadow-[0_28px_90px_rgba(0,0,0,0.30)]">
+          <div className="grid grid-cols-1 gap-5 p-0 dark:p-5 lg:grid-cols-[1fr_1.15fr]">
+            <div>
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.26em] text-[hsl(38,92%,58%)]">
+                <p className="text-xs font-bold uppercase tracking-[0.26em] text-primary">
                   Long Line Tool Tracker
                 </p>
-                <h1 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-[0.08em] md:text-5xl">
+                <h1 className="mt-2 font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-[0.08em] text-slate-950 sm:text-3xl dark:text-slate-50">
                   Tool Control Room
                 </h1>
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                  Welcome back, {displayName(user)}. Review fleet status, returns, tags, and recent movements from one clear tool-control dashboard.
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Review fleet status, returns, tags, and recent movements from one clear tool-control dashboard.
                 </p>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Badge className={`${VARIANT_STYLES[healthStatus.variant].pill} rounded-full px-3 py-1 text-xs font-black uppercase tracking-wider`}>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Badge className="rounded-md border border-orange-600 bg-orange-600 px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white shadow-sm hover:bg-orange-700">
                   {healthStatus.label}
                 </Badge>
 
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-xl border border-white/20 bg-white/5 text-xs font-black uppercase tracking-wider text-slate-100 hover:bg-white/10"
+                  className="h-9 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50"
                   onClick={() => fetchDashboard({ showRefresh: true })}
                   disabled={refreshing}
                   data-testid="refresh-dashboard-btn"
@@ -527,16 +538,16 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 lg:gap-4">
               {heroMetrics.map((metric) => (
                 <div
                   key={metric.label}
-                  className="rounded-xl border border-white/10 bg-black/20 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-primary/25 dark:bg-slate-950/95"
                 >
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground">
                     {metric.label}
                   </p>
-                  <p className="mt-2 font-['Barlow_Condensed'] text-3xl font-black leading-none text-[hsl(38,92%,58%)]">
+                  <p className="mt-2 font-['Manrope'] text-2xl font-bold leading-none text-slate-950">
                     {metric.value}
                   </p>
                 </div>
@@ -547,13 +558,13 @@ export default function Dashboard() {
       )}
 
       {errorMessage && (
-        <Card className="rounded-2xl border border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="dashboard-error">
+        <Card className="rounded-xl border border-rose-500/30 bg-rose-500/5 shadow-none" data-testid="dashboard-error">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
               <AlertTriangle size={20} className="mt-0.5 shrink-0 text-rose-500" />
               <div>
                 <p className="text-sm font-bold">Dashboard data issue</p>
-                <p className="text-sm text-muted-foreground">{errorMessage}</p>
+                <p className="text-sm text-slate-600">{errorMessage}</p>
               </div>
             </div>
 
@@ -570,7 +581,7 @@ export default function Dashboard() {
       )}
 
       {widgets.stats && (
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 items-start">
           <StatCard
             title="Total Tools"
             value={numberValue(stats?.total_tools)}
@@ -617,14 +628,14 @@ export default function Dashboard() {
       {(widgets.fleetHealth || widgets.quickActions) && (
         <section className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {widgets.fleetHealth && (
-            <Card className={`rounded-2xl border shadow-[0_20px_54px_rgba(0,0,0,0.22)] ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
+            <Card className={`rounded-md border shadow-sm ${VARIANT_STYLES[healthStatus.variant].card}`} data-testid="fleet-health-section">
               <CardHeader className="pb-2">
-                <CardTitle className="font-['Barlow_Condensed'] text-xl uppercase tracking-tight">
+                <CardTitle className="font-['Barlow_Condensed'] text-xl font-black uppercase tracking-[0.10em]">
                   Fleet Health
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">{healthStatus.text}</p>
+                <p className="text-sm text-slate-600">{healthStatus.text}</p>
               </CardContent>
             </Card>
           )}

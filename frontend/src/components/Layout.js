@@ -123,7 +123,7 @@ const SUITE_LINKS = [
 
 function SuiteIconMark({ icon: Icon }) {
   return (
-    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[rgba(245,190,80,0.36)] bg-[rgba(245,190,80,0.08)] text-[hsl(38,92%,50%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] transition-colors duration-150 group-hover:border-[rgba(245,190,80,0.62)] group-hover:bg-[rgba(245,190,80,0.14)] group-hover:text-[hsl(38,92%,66%)]">
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[0.62rem] border border-[rgba(245,190,80,0.36)] bg-[radial-gradient(circle_at_35%_25%,rgba(245,190,80,0.18),transparent_48%),linear-gradient(135deg,rgba(245,190,80,0.11),rgba(255,255,255,0.035))] text-[hsl(38,92%,50%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.045),0_8px_18px_rgba(0,0,0,0.14)] transition-colors duration-150 group-hover:border-[rgba(245,190,80,0.62)] group-hover:bg-[radial-gradient(circle_at_35%_25%,rgba(245,190,80,0.28),transparent_48%),linear-gradient(135deg,rgba(245,190,80,0.17),rgba(255,255,255,0.055))] group-hover:text-[hsl(38,92%,66%)]">
       <Icon size={16} strokeWidth={2.35} />
     </span>
   );
@@ -170,9 +170,9 @@ function NavItem({ item, badge, onClick }) {
       data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
       className={({ isActive }) =>
         [
-          "group mx-2 flex items-center gap-3 rounded-xl border-l-2 px-3 py-2.5 text-sm transition-all duration-150",
+          "group mx-2 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium tracking-normal transition-all duration-150",
           isActive
-            ? "border-[hsl(38,92%,50%)] bg-[linear-gradient(135deg,rgba(245,190,80,0.18),rgba(245,190,80,0.05))] text-[hsl(38,92%,50%)] shadow-[0_14px_34px_rgba(0,0,0,0.22)]"
+            ? "border-[rgba(245,190,80,0.42)] bg-[linear-gradient(135deg,rgba(245,190,80,0.18),rgba(245,190,80,0.05))] text-[hsl(38,92%,50%)] shadow-[0_12px_28px_rgba(0,0,0,0.18)]"
             : "border-transparent text-slate-300 hover:bg-white/5 hover:text-white",
         ].join(" ")
       }
@@ -204,7 +204,7 @@ function ExternalNavItem({ item, onClick }) {
     <a
       href={item.href}
       onClick={onClick}
-      className="group mx-2 flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
+      className="group mx-2 flex items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-medium tracking-normal text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
       data-testid={`suite-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
      target="_blank" rel="noopener noreferrer">
       <SuiteIconMark icon={Icon} />
@@ -299,6 +299,10 @@ export default function Layout() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto py-3 scrollbar-thin">
+          <div className="px-3 pt-4 pb-2 text-[0.62rem] font-black uppercase tracking-[0.22em] text-slate-500">
+            Operations
+          </div>
+
         {visibleNavItems.map((item) => (
           <NavItem key={item.to} item={item} onClick={onNav} />
         ))}
@@ -328,13 +332,13 @@ export default function Layout() {
       {showFooterActions && (
         <div className="border-t border-white/10 p-3">
           <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[hsl(38,92%,50%)] text-sm font-black text-black">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(38,92%,50%)] text-sm font-black text-black">
               {getUserInitial(user)}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold text-slate-100">{displayName}</p>
               <p className="truncate text-xs uppercase tracking-wider text-slate-400">
-                {roleLabel}
+                Tool Tracker
               </p>
             </div>
           </div>
@@ -357,7 +361,7 @@ export default function Layout() {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-red-300 hover:bg-red-500/10"
+              className="h-9 rounded-lg border border-white/10 text-xs uppercase tracking-wider text-slate-200 hover:bg-white/5 hover:text-white"
               data-testid="logout-btn"
             >
               <LogOut size={14} />
@@ -374,70 +378,132 @@ export default function Layout() {
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-[rgba(245,190,80,0.18)] bg-slate-950 lg:flex">
         <SidebarContent showFooterActions />
       </aside>
+      <header className="fixed left-0 right-0 top-0 z-50 border-b border-[rgba(245,190,80,0.20)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.15),transparent_28%),linear-gradient(180deg,#050916_0%,#080d18_100%)] text-slate-100 shadow-[0_14px_34px_rgba(15,23,42,0.22)] backdrop-blur-md lg:hidden">
+        <div className="flex min-h-[3.95rem] items-center justify-between gap-3 px-4 py-2.5">
+          <div className="flex min-w-0 items-center gap-3">
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 rounded-lg border border-white/10 bg-white/5 text-slate-100 hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] sm:hidden"
+                  data-testid="mobile-menu-btn"
+                  aria-label="Open navigation"
+                >
+                  <Menu size={20} />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 p-0">
+                <SidebarContent onNav={closeMobileNav} showFooterActions />
+              </SheetContent>
+            </Sheet>
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-3 border-b border-[rgba(245,190,80,0.18)] bg-slate-950 px-4 text-slate-100 lg:hidden">
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                navigate("/");
+                closeMobileNav();
+              }}
+              className="flex min-w-0 items-center gap-3 text-left"
+              data-testid="compact-logo-link"
+            >
+              <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-10 w-10 shrink-0 object-contain" />
+              <span className="min-w-0 leading-none">
+                <span className="block truncate text-[0.58rem] font-black uppercase tracking-[0.24em] text-[hsl(38,92%,50%)]">
+                  Long Line
+                </span>
+                <span className="mt-0.5 block truncate text-[1.02rem] font-black uppercase tracking-[0.08em] text-white">
+                  Tool Tracker
+                </span>
+                <span className="mt-0.5 block truncate text-[0.58rem] font-bold uppercase tracking-[0.20em] text-slate-400">
+                  Tool &amp; Asset Control
+                </span>
+              </span>
+            </button>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="rounded-none p-2"
-              data-testid="mobile-menu-btn"
+              variant="secondary"
+              size="icon"
+              onClick={toggleTheme}
+              className="h-9 w-9 rounded-md border border-white/10 bg-white/5 text-slate-100 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)]"
+              data-testid="mobile-theme-toggle"
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             >
-              <Menu size={20} />
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
             </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <SidebarContent onNav={closeMobileNav} showFooterActions />
-          </SheetContent>
-        </Sheet>
 
-        <div className="min-w-0 flex-1">
-          <p className="truncate font-['Barlow_Condensed'] text-lg font-black uppercase tracking-widest text-[hsl(38,92%,50%)]">
-            Tool Tracker
-          </p>
-          <p className="-mt-1 truncate text-[11px] uppercase tracking-wider text-muted-foreground">
-            {currentPageTitle}
-          </p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleLogout}
+              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
+              data-testid="mobile-logout-btn"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </Button>
+          </div>
         </div>
 
-        <Button
-          type="button"
-          size="sm"
-          className="h-9 rounded-none bg-[hsl(38,92%,50%)] px-3 text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
-          onClick={() => {
-            navigate("/scan");
-            closeMobileNav();
-          }}
-          data-testid="mobile-scan-btn"
-        >
-          <ScanLine size={16} className="mr-1" />
-          Scan
-        </Button>
+        <div className="border-t border-white/10 px-3 pb-2">
+          <nav className="flex gap-1 overflow-x-auto py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Tool Tracker compact navigation">
+            {visibleNavItems.filter((item) => !["users", "settings"].includes(String(item.label).toLowerCase())).map((item) => {
+              const Icon = item.icon;
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="relative rounded-none p-2"
-          onClick={() => {
-            navigate("/notifications");
-            closeMobileNav();
-          }}
-          data-testid="mobile-notifications-btn"
-        >
-          <Bell size={18} />
-          {unreadCount > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(346,77%,50%)] text-[10px] text-white">
-              {unreadCount}
-            </span>
-          )}
-        </Button>
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  onClick={closeMobileNav}
+                  className={({ isActive }) =>
+                    `flex shrink-0 items-center gap-1.5 rounded-xl border px-2.5 py-1.5 text-sm font-semibold transition ${
+                      isActive
+                        ? "border-[rgba(245,190,80,0.34)] bg-[rgba(245,190,80,0.16)] text-[hsl(38,92%,56%)] shadow-none"
+                        : "border-transparent bg-transparent text-slate-300 hover:border-white/10 hover:bg-white/5 hover:text-white"
+                    }`
+                  }
+                >
+                  <Icon size={14} />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+              <span className="mx-1 h-5 w-px shrink-0 bg-white/10" aria-hidden="true" />
+
+              <a
+                href={process.env.REACT_APP_LONG_LINE_DIARY_URL || "http://localhost:3003/dashboard"}
+                className="compact-suite-link shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold text-[hsl(38,92%,56%)] transition hover:bg-white/5 hover:text-white"
+                data-testid="compact-suite-lld"
+              >
+                LLD
+              </a>
+
+              <a
+                href={process.env.REACT_APP_TIMESHEET_MANAGER_URL || "http://localhost:3001/dashboard"}
+                className="compact-suite-link shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold text-[hsl(38,92%,56%)] transition hover:bg-white/5 hover:text-white"
+                data-testid="compact-suite-timesheet"
+              >
+                Timesheet
+              </a>
+
+              <a
+                href={process.env.REACT_APP_FITOUTOS_URL || "http://localhost:3004/dashboard"}
+                className="compact-suite-link shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold text-[hsl(38,92%,56%)] transition hover:bg-white/5 hover:text-white"
+                data-testid="compact-suite-fitoutos"
+              >
+                FitoutOS
+              </a>
+          </nav>
+        </div>
       </header>
-
       <div className="lg:pl-64">
-        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-14 dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-[7.6rem] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
           <div className="w-full px-4 py-5 sm:px-5 lg:px-6 lg:py-6">
             <div className="page-enter">
               <Outlet />
