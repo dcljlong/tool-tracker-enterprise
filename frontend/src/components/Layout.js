@@ -3,6 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Calendar,
+  BookOpen,
+  Building2,
+  Clock3,
   ExternalLink,
   FileText,
   FolderOpen,
@@ -100,24 +103,31 @@ const PAGE_TITLES = {
 const SUITE_LINKS = [
   {
     href: process.env.REACT_APP_LONG_LINE_DIARY_URL || "http://localhost:3003/dashboard",
-    icon: LayoutDashboard,
-    label: "Long Line Diary",
+    icon: BookOpen,
+    label: "LLD",
     description: "Site diary",
   },
   {
     href: process.env.REACT_APP_TIMESHEET_MANAGER_URL || "http://localhost:3001",
-    icon: Calendar,
-    label: "Timesheet Manager",
+    icon: Clock3,
+    label: "Timesheet",
     description: "Labour control",
   },
   {
     href: process.env.REACT_APP_FITOUTOS_URL || "http://localhost:3004",
-    icon: FileText,
+    icon: Building2,
     label: "FitoutOS",
     description: "Programme control",
   },
 ];
 
+function SuiteIconMark({ icon: Icon }) {
+  return (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[rgba(245,190,80,0.36)] bg-[rgba(245,190,80,0.08)] text-[hsl(38,92%,50%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)] transition-colors duration-150 group-hover:border-[rgba(245,190,80,0.62)] group-hover:bg-[rgba(245,190,80,0.14)] group-hover:text-[hsl(38,92%,66%)]">
+      <Icon size={16} strokeWidth={2.35} />
+    </span>
+  );
+}
 function formatRole(role) {
   if (!role) return "User";
   return role
@@ -197,7 +207,7 @@ function ExternalNavItem({ item, onClick }) {
       className="group mx-2 flex items-center gap-3 rounded-xl border-l-2 border-transparent px-3 py-2.5 text-sm text-slate-300 transition-all duration-150 hover:bg-white/5 hover:text-white"
       data-testid={`suite-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
      target="_blank" rel="noopener noreferrer">
-      <Icon size={18} className="shrink-0" />
+      <SuiteIconMark icon={Icon} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-bold uppercase tracking-wider">
           {item.label}
@@ -427,7 +437,6 @@ export default function Layout() {
       </header>
 
       <div className="lg:pl-64">
-
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-14 dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
           <div className="w-full px-4 py-5 sm:px-5 lg:px-6 lg:py-6">
             <div className="page-enter">
@@ -439,4 +448,3 @@ export default function Layout() {
     </div>
   );
 }
-
