@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import toolTrackerLogo from "@/assets/tool-tracker-logo.png";
 
 const STEPS = [
   {
@@ -118,55 +119,106 @@ function SetupShell({ step, children }) {
   const current = STEPS.find((item) => item.id === step) || STEPS[0];
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 text-foreground">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <header className="grid gap-4 border-b border-border pb-6 lg:grid-cols-[1fr_320px] lg:items-end">
-          <div>
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center border-2 border-[hsl(38,92%,50%)] bg-[hsl(38,92%,50%)] text-sm font-black text-black">
-                TT
-              </div>
+    <div className="min-h-screen bg-[#f4efe5] text-slate-950 dark:bg-[#050914] dark:text-slate-100">
+      <div className="flex min-h-screen">
+        <aside className="hidden w-[17rem] shrink-0 border-r border-black/10 bg-[#07111f] px-4 py-5 text-white shadow-[12px_0_30px_rgba(0,0,0,0.18)] lg:flex lg:flex-col">
+          <div className="flex items-center gap-3">
+            <img
+              src={toolTrackerLogo}
+              alt="Tool Tracker"
+              className="h-16 w-16 object-contain"
+            />
+            <div className="min-w-0">
+              <p className="font-['Barlow_Condensed'] text-2xl font-black uppercase leading-none tracking-[0.16em] text-[hsl(38,92%,58%)]">
+                Tool Tracker
+              </p>
+              <p className="mt-1 text-[0.68rem] font-black uppercase tracking-[0.22em] text-slate-400">
+                Long Line Suite
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-[rgba(245,190,80,0.28)] bg-white/[0.04] p-4">
+            <Badge className="rounded-full border border-[hsl(38,92%,50%)]/25 bg-[hsl(38,92%,50%)]/12 px-3 py-1 text-xs font-black uppercase tracking-wider text-[hsl(38,92%,58%)]">
+              Step {current.id} of {STEPS.length}
+            </Badge>
+            <h1
+              className="mt-4 font-['Barlow_Condensed'] text-3xl font-black uppercase leading-none tracking-tight text-white"
+              data-testid="setup-title"
+            >
+              {current.title}
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-slate-300">{current.description}</p>
+          </div>
+
+          <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[rgba(245,190,80,0.36)] bg-[rgba(245,190,80,0.12)] text-[hsl(38,92%,58%)]">
+                <Wrench size={18} />
+              </span>
               <div>
-                <h1
-                  className="font-['Barlow_Condensed'] text-4xl font-black uppercase tracking-widest text-[hsl(38,92%,50%)] md:text-5xl"
-                  data-testid="setup-title"
-                >
-                  Tool Tracker
-                </h1>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-muted-foreground">
-                  Initial System Setup
+                <p className="text-sm font-black uppercase tracking-wide text-white">
+                  NZ construction tool control
+                </p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">
+                  Configure minimum live system settings before opening the full Tool Tracker shell.
                 </p>
               </div>
             </div>
-
-            <Badge className="rounded-full border border-[hsl(38,92%,50%)]/20 bg-[hsl(38,92%,50%)]/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-[hsl(38,92%,50%)]">
-              Step {current.id} of {STEPS.length}
-            </Badge>
-
-            <h2 className="mt-3 font-['Barlow_Condensed'] text-3xl font-black uppercase tracking-tight">
-              {current.title}
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{current.description}</p>
           </div>
 
-          <Card className="rounded-sm border-border shadow-none">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <Wrench size={18} className="mt-0.5 shrink-0 text-[hsl(38,92%,50%)]" />
-                <div>
-                  <p className="text-sm font-bold">NZ construction tool control</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Configure the minimum required system settings first. Deeper category, report, and user rules can still be managed later.
-                  </p>
+          <div className="mt-auto rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">
+              First-run setup
+            </p>
+            <p className="mt-1 text-sm text-slate-300">
+              Create the admin account, company identity, alerts, and optional users.
+            </p>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
+            <header className="rounded-3xl border border-black/10 bg-white/72 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.08)] backdrop-blur dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[0_18px_45px_rgba(0,0,0,0.22)]">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-4">
+                  <img
+                    src={toolTrackerLogo}
+                    alt="Tool Tracker"
+                    className="h-14 w-14 object-contain lg:hidden"
+                  />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.28em] text-[hsl(38,92%,42%)] dark:text-[hsl(38,92%,62%)]">
+                      Initial System Setup
+                    </p>
+                    <h2 className="mt-1 font-['Barlow_Condensed'] text-4xl font-black uppercase leading-none tracking-tight text-slate-950 dark:text-white">
+                      Tool Tracker
+                    </h2>
+                  </div>
                 </div>
+
+                <Badge className="w-fit rounded-full border border-[hsl(38,92%,50%)]/25 bg-[hsl(38,92%,50%)]/12 px-3 py-1 text-xs font-black uppercase tracking-wider text-[hsl(38,92%,42%)] dark:text-[hsl(38,92%,62%)]">
+                  Step {current.id} of {STEPS.length}
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
-        </header>
 
-        <StepProgress currentStep={step} />
+              <div className="mt-4 border-t border-black/10 pt-4 dark:border-white/10">
+                <h1 className="font-['Barlow_Condensed'] text-3xl font-black uppercase tracking-tight text-slate-950 dark:text-white">
+                  {current.title}
+                </h1>
+                <p className="mt-1 max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+                  {current.description}
+                </p>
+              </div>
+            </header>
 
-        {children}
+            <StepProgress currentStep={step} />
+
+            <div className="[&_.rounded-sm]:rounded-2xl [&_.shadow-none]:shadow-[0_18px_45px_rgba(15,23,42,0.08)] [&_.border-border]:border-black/10 dark:[&_.border-border]:border-white/10 dark:[&_.shadow-none]:shadow-[0_18px_45px_rgba(0,0,0,0.2)]">
+              {children}
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );
@@ -754,3 +806,4 @@ export default function SetupWizard({ onComplete }) {
     </SetupShell>
   );
 }
+
