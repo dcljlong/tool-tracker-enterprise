@@ -1644,6 +1644,42 @@ async def startup_tasks():
     await db.certificates.create_index("tool_id")
     await db.certificates.create_index("expiry_date")
     # Check expiries on startup
+    # Seed / repair configured admin
+    admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    admin_name = os.environ.get("ADMIN_NAME", "Admin").strip() or "Admin"
+
+    if admin_email and admin_password:
+        existing = await db.users.find_one({"email": admin_email})
+
+        if existing is None:
+            admin_user_id = str(uuid.uuid4())
+            await db.users.insert_one({
+                "id": admin_user_id,
+                "email": admin_email,
+                "password": hash_password(admin_password),
+                "name": admin_name,
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "is_active": True
+            })
+            logger.info(f"Configured Tool Tracker admin user created: {admin_email}")
+        else:
+            update_data = {
+                "email": admin_email,
+                "name": existing.get("name") or admin_name,
+                "role": "admin",
+                "is_active": True
+            }
+
+            if not existing.get("password") or not verify_password(admin_password, existing["password"]):
+                update_data["password"] = hash_password(admin_password)
+
+            await db.users.update_one(
+                {"_id": existing["_id"]},
+                {"$set": update_data}
+            )
+            logger.info(f"Configured Tool Tracker admin user repaired: {admin_email}")
     try:
         await check_expiries()
     except Exception as e:
