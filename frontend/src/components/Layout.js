@@ -270,8 +270,8 @@ export default function Layout() {
   const closeMobileNav = () => setMobileOpen(false);
 
   const SidebarContent = ({ onNav, showFooterActions = true }) => (
-    <div className="flex h-full flex-col overflow-hidden bg-slate-950 text-slate-100">
-      <div className="border-b border-[rgba(245,190,80,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.18),transparent_38%),linear-gradient(135deg,rgba(15,23,42,1),rgba(2,6,23,1))] px-4 py-4">
+    <div className="flex h-full flex-col overflow-hidden bg-[linear-gradient(180deg,#050916_0%,#07111f_46%,#020617_100%)] text-slate-100">
+      <div className="border-b border-[rgba(245,190,80,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.22),transparent_42%),linear-gradient(135deg,rgba(15,23,42,1),rgba(2,6,23,1))] px-4 py-4">
         <button
           type="button"
           onClick={() => {
@@ -282,15 +282,15 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-12 w-12 shrink-0 object-contain" />
+            <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-[4.65rem] w-[4.65rem] shrink-0 object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.38)]" />
             <div className="min-w-0">
-              <p className="truncate text-[10px] font-extrabold uppercase tracking-[0.24em] text-[hsl(38,92%,50%)]">
+              <p className="truncate text-[0.58rem] font-black uppercase tracking-[0.24em] text-[hsl(38,92%,58%)]">
                 Long Line
               </p>
               <h1 className="truncate font-['Barlow_Condensed'] text-xl font-black uppercase tracking-widest text-slate-50">
                 Tool Tracker
               </h1>
-              <p className="truncate text-[11px] uppercase tracking-wider text-slate-400">
+              <p className="truncate text-[0.57rem] font-bold uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]">
                 Tool & Asset Control
               </p>
             </div>
@@ -319,7 +319,7 @@ export default function Layout() {
           onClick={onNav}
         />
 
-        <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="mt-4 border-t border-[rgba(245,190,80,0.16)] pt-4">
           <div className="px-4 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
             Long Line Suite
           </div>
@@ -330,9 +330,9 @@ export default function Layout() {
       </nav>
 
       {showFooterActions && (
-        <div className="border-t border-white/10 p-3">
-          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(38,92%,50%)] text-sm font-black text-black">
+        <div className="mt-auto border-t border-[rgba(245,190,80,0.16)] p-3">
+          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[rgba(245,190,80,0.20)] bg-[linear-gradient(135deg,rgba(245,190,80,0.13),rgba(255,255,255,0.035))] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)]">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(38,92%,50%)] text-sm font-black text-black shadow-[0_10px_22px_rgba(245,158,11,0.22)]">
               {getUserInitial(user)}
             </div>
             <div className="min-w-0 flex-1">
@@ -349,7 +349,7 @@ export default function Layout() {
               variant="ghost"
               size="sm"
               onClick={toggleTheme}
-              className="h-9 rounded-xl border border-white/10 text-xs uppercase tracking-wider text-slate-200 hover:bg-white/5"
+              className="h-9 rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
               data-testid="theme-toggle"
             >
               {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -361,7 +361,7 @@ export default function Layout() {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="h-9 rounded-lg border border-white/10 text-xs uppercase tracking-wider text-slate-200 hover:bg-white/5 hover:text-white"
+              className="h-9 rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
               data-testid="logout-btn"
             >
               <LogOut size={14} />
@@ -504,7 +504,7 @@ export default function Layout() {
       </header>
       <div className="lg:pl-64">
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-[7.6rem] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
-          <div className="w-full px-4 py-5 sm:px-5 lg:px-6 lg:py-6">
+          <div className="w-full px-4 py-5 sm:px-5 lg:px-7 lg:py-6">
             <div className="page-enter">
               <Outlet />
             </div>
