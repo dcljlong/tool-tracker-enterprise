@@ -495,6 +495,7 @@ async def checkout_tool(data: CheckoutCreate, current_user: dict = Depends(auth_
         "current_holder_name": current_user["name"],
         "current_site": data.site,
         "current_job": data.job_number,
+        "expected_return_date": data.expected_return_date,
         "updated_at": datetime.now(timezone.utc).isoformat()
     }})
     await log_audit(data.tool_id, "checkout", current_user["user_id"], current_user["name"],
@@ -527,6 +528,7 @@ async def return_tool(data: ReturnCreate, current_user: dict = Depends(auth_depe
         "current_holder_name": None,
         "current_site": None,
         "current_job": None,
+        "expected_return_date": None,
         "updated_at": datetime.now(timezone.utc).isoformat()
     }})
     await log_audit(data.tool_id, "return", current_user["user_id"], current_user["name"],
@@ -1390,7 +1392,8 @@ async def bulk_checkout(data: BulkCheckout, current_user: dict = Depends(auth_de
         await db.tools.update_one({"id": tool_id}, {"$set": {
             "status": "checked_out", "current_holder_id": current_user["user_id"],
             "current_holder_name": current_user["name"], "current_site": data.site,
-            "current_job": data.job_number, "updated_at": datetime.now(timezone.utc).isoformat()
+            "current_job": data.job_number, "expected_return_date": data.expected_return_date,
+            "updated_at": datetime.now(timezone.utc).isoformat()
         }})
         await log_audit(tool_id, "checkout", current_user["user_id"], current_user["name"],
                         f"Bulk checkout for job {data.job_number} at {data.site}")
@@ -1418,7 +1421,7 @@ async def bulk_return(data: BulkReturn, current_user: dict = Depends(auth_depend
         await db.tools.update_one({"id": tool_id}, {"$set": {
             "status": new_status, "condition": data.condition,
             "current_holder_id": None, "current_holder_name": None,
-            "current_site": None, "current_job": None,
+            "current_site": None, "current_job": None, "expected_return_date": None,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }})
         await log_audit(tool_id, "return", current_user["user_id"], current_user["name"],
