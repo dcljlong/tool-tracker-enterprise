@@ -61,21 +61,23 @@ const readDashboardLayout = () => {
     return DEFAULT_DASHBOARD_LAYOUT;
   }
 };
+// TOOL TRACKER DASHBOARD TRUE DARK V3
+// TOOL TRACKER DASHBOARD FINAL DARK POLISH V4
 const VARIANT_STYLES = {
   default: {
-    card: "border-slate-200 bg-white hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
+    card: "border-slate-200 bg-white dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
     iconBox: "border-amber-300 bg-amber-100 text-amber-600 dark:border-primary/30 dark:bg-primary/10 dark:text-primary",
     support: "text-amber-700 dark:text-primary",
     pill: "border-primary/30 bg-primary/10 text-primary",
   },
   green: {
-    card: "border-slate-200 bg-white hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
+    card: "border-slate-200 bg-white dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
     iconBox: "border-emerald-300 bg-emerald-100 text-emerald-600 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400",
     support: "text-amber-700 dark:text-primary",
     pill: "border-primary/30 bg-primary/10 text-primary",
   },
   blue: {
-    card: "border-slate-200 bg-white hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
+    card: "border-slate-200 bg-white dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 hover:border-slate-300 dark:border-primary/20 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:hover:border-primary/70",
     iconBox: "border-blue-300 bg-blue-100 text-blue-600 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-400",
     support: "text-amber-700 dark:text-primary",
     pill: "border-primary/30 bg-primary/10 text-primary",
@@ -87,7 +89,7 @@ const VARIANT_STYLES = {
     pill: "border-primary/30 bg-primary/10 text-primary",
   },
   red: {
-    card: "border-red-200 bg-red-50 hover:border-red-300 dark:border-red-400/45 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-red-950/15 dark:hover:border-red-300",
+    card: "border-red-200 bg-red-50 hover:border-red-300 dark:border-red-500/35 dark:bg-slate-950/95 dark:hover:border-red-400/60",
     iconBox: "border-red-300 bg-red-100 text-red-600 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-500",
     support: "text-red-700 dark:text-red-500",
     pill: "border-red-300 bg-red-100 text-red-700 dark:border-red-400/55 dark:bg-red-500/15 dark:text-red-100",
@@ -182,10 +184,10 @@ function LoadingSkeleton() {
 
 function EmptyPanel({ icon: Icon, title, description }) {
   return (
-    <div className="flex min-h-[120px] flex-col items-center justify-center rounded-md border border-dashed border-[rgba(150,118,66,0.20)] bg-white p-6 text-center">
-      <Icon size={28} className="mb-3 text-slate-600" />
+    <div className="flex min-h-[120px] flex-col items-center justify-center rounded-md border border-dashed border-[rgba(150,118,66,0.20)] bg-white p-6 text-center dark:border-[rgba(245,190,80,0.18)] dark:bg-slate-950/70 dark:text-slate-200">
+      <Icon size={28} className="mb-3 text-slate-600 dark:text-slate-500" />
       <p className="text-sm font-bold">{title}</p>
-      <p className="mt-1 max-w-sm text-xs text-slate-600">{description}</p>
+      <p className="mt-1 max-w-sm text-xs text-slate-600 dark:text-slate-400">{description}</p>
     </div>
   );
 }
@@ -195,7 +197,7 @@ function OverduePanel({ stats, navigate }) {
   const overdueTools = Array.isArray(stats?.overdue_tools) ? stats.overdue_tools : [];
 
   return (
-    <Card className="rounded-xl border border-amber-300/45 bg-white text-slate-950 shadow-sm" data-testid="overdue-section">
+    <Card className="rounded-xl border border-amber-300/45 bg-white text-slate-950 shadow-sm dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 dark:text-slate-50" data-testid="overdue-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-lg font-black uppercase tracking-[0.09em]">
           <span className="flex items-center gap-2">
@@ -216,7 +218,7 @@ function OverduePanel({ stats, navigate }) {
                 type="button"
                 key={item.id || `${getToolLabel(item)}-${index}`}
                 onClick={() => item.tool_id && navigate(`/tools/${item.tool_id}`)}
-                className="flex w-full items-center justify-between gap-3 rounded-md border border-[rgba(150,118,66,0.22)] bg-white p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-[#f3eadb]"
+                className="flex w-full items-center justify-between gap-3 rounded-md border border-[rgba(150,118,66,0.22)] bg-white p-3 text-left text-sm transition-colors hover:border-amber-400/45 hover:bg-[#f3eadb] dark:border-[rgba(245,190,80,0.18)] dark:bg-slate-950/70 dark:text-slate-100 dark:hover:border-[rgba(245,190,80,0.34)] dark:hover:bg-white/5"
               >
                 <div className="min-w-0">
                   <p className="truncate font-['JetBrains_Mono'] text-xs font-bold">
@@ -263,7 +265,7 @@ function SafetyPanel({ stats, navigate }) {
   const expiringCount = numberValue(stats?.expiring_tags);
 
   return (
-    <Card className="rounded-xl border border-rose-300/40 bg-white text-slate-950 shadow-sm" data-testid="expiring-tags-section">
+    <Card className="rounded-xl border border-rose-300/40 bg-white text-slate-950 shadow-sm dark:border-rose-500/30 dark:bg-slate-950/95 dark:text-slate-50" data-testid="expiring-tags-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between gap-3 font-['Barlow_Condensed'] text-lg font-black uppercase tracking-[0.09em]">
           <span className="flex items-center gap-2">
@@ -308,7 +310,7 @@ function RecentActivity({ activity }) {
   const safeActivity = Array.isArray(activity) ? activity : [];
 
   return (
-    <Card className="rounded-xl border border-[rgba(150,118,66,0.26)] bg-white text-slate-950 shadow-sm" data-testid="recent-activity-section">
+    <Card className="rounded-xl border border-[rgba(150,118,66,0.26)] bg-white text-slate-950 shadow-sm dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 dark:text-slate-50" data-testid="recent-activity-section">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="font-['Barlow_Condensed'] text-xl font-black uppercase tracking-[0.10em]">
           Recent Activity
@@ -359,7 +361,7 @@ function RecentActivity({ activity }) {
 
 function QuickActions({ navigate }) {
   return (
-    <Card className="rounded-xl border border-[rgba(150,118,66,0.26)] bg-white text-slate-950 shadow-sm" data-testid="quick-actions-section">
+    <Card className="rounded-xl border border-[rgba(150,118,66,0.26)] bg-white text-slate-950 shadow-sm dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 dark:text-slate-50" data-testid="quick-actions-section">
       <CardHeader className="pb-2">
         <CardTitle className="font-['Barlow_Condensed'] text-xl font-black uppercase tracking-[0.10em]">
           Quick Actions
@@ -377,7 +379,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb]"
+          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb] dark:border-[rgba(245,190,80,0.20)] dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-white/5"
           onClick={() => navigate("/tools")}
           data-testid="quick-tools-btn"
         >
@@ -386,7 +388,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb]"
+          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb] dark:border-[rgba(245,190,80,0.20)] dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-white/5"
           onClick={() => navigate("/reports")}
           data-testid="quick-reports-btn"
         >
@@ -395,7 +397,7 @@ function QuickActions({ navigate }) {
 
         <Button
           variant="outline"
-          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb]"
+          className="h-11 rounded-md border border-[rgba(150,118,66,0.28)] bg-white text-xs font-black uppercase tracking-wider text-slate-900 hover:bg-[#f3eadb] dark:border-[rgba(245,190,80,0.20)] dark:bg-slate-950/70 dark:text-slate-100 dark:hover:bg-white/5"
           onClick={() => navigate("/calendar")}
           data-testid="quick-calendar-btn"
         >
@@ -501,6 +503,7 @@ export default function Dashboard() {
   return (
     <div
       className="space-y-5 pt-8 text-slate-950 dark:text-slate-100"
+      /* TOOL TRACKER DASHBOARD TRUE DARK V2 */
       data-testid="dashboard-page"
     >
       {widgets.hero && (
@@ -527,7 +530,7 @@ export default function Dashboard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50"
+                  className="h-9 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-sm hover:bg-slate-50 dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95 dark:text-slate-100 dark:hover:bg-white/5"
                   onClick={() => fetchDashboard({ showRefresh: true })}
                   disabled={refreshing}
                   data-testid="refresh-dashboard-btn"
@@ -542,7 +545,7 @@ export default function Dashboard() {
               {heroMetrics.map((metric) => (
                 <div
                   key={metric.label}
-                  className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-primary/25 dark:bg-slate-950/95"
+                  className="rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-[rgba(245,190,80,0.24)] dark:bg-slate-950/95"
                 >
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-muted-foreground">
                     {metric.label}

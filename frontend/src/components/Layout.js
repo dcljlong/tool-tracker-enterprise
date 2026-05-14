@@ -298,8 +298,8 @@ export default function Layout() {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto py-3 scrollbar-thin">
-          <div className="px-3 pt-4 pb-2 text-[0.62rem] font-black uppercase tracking-[0.22em] text-slate-500">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="px-3 pt-1.5 pb-1 text-[0.61rem] font-black uppercase tracking-[0.20em] text-slate-500">
             Operations
           </div>
 
@@ -319,7 +319,7 @@ export default function Layout() {
           onClick={onNav}
         />
 
-        <div className="mt-4 border-t border-[rgba(245,190,80,0.16)] pt-4">
+        <div className="mt-2.5 border-t border-[rgba(245,190,80,0.16)] pt-2.5">
           <div className="px-4 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
             Long Line Suite
           </div>
@@ -331,7 +331,13 @@ export default function Layout() {
 
       {showFooterActions && (
         <div className="mt-auto border-t border-[rgba(245,190,80,0.16)] p-3">
-          <div className="mb-3 flex items-center gap-3 rounded-2xl border border-[rgba(245,190,80,0.20)] bg-[linear-gradient(135deg,rgba(245,190,80,0.13),rgba(255,255,255,0.035))] p-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)]">
+          {/* TOOL TRACKER RAIL FOOTER PARITY V1 */}
+          {/* TOOL TRACKER RAIL RHYTHM V2 */}
+          {/* TOOL TRACKER RAIL FINAL VISUAL POLISH V4 */}
+          <div className="px-3 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-[hsl(38,92%,56%)]">
+            Account
+          </div>
+          <div className="mb-3 flex items-center gap-3 rounded-xl border border-[rgba(245,190,80,0.20)] bg-[linear-gradient(135deg,rgba(245,190,80,0.13),rgba(255,255,255,0.035))] px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)]">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(38,92%,50%)] text-sm font-black text-black shadow-[0_10px_22px_rgba(245,158,11,0.22)]">
               {getUserInitial(user)}
             </div>
@@ -343,17 +349,17 @@ export default function Layout() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="flex flex-col items-center gap-2">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={toggleTheme}
-              className="h-9 rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
+              className="h-9 w-10 rounded-xl border border-[rgba(245,190,80,0.18)] p-0 text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
               data-testid="theme-toggle"
             >
               {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-              <span className="ml-2">{theme === "dark" ? "Light" : "Dark"}</span>
+              <span className="sr-only">{theme === "dark" ? "Light" : "Dark"}</span>
             </Button>
 
             <Button
@@ -361,11 +367,11 @@ export default function Layout() {
               variant="ghost"
               size="sm"
               onClick={handleLogout}
-              className="h-9 rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
+              className="h-9 w-full rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
               data-testid="logout-btn"
             >
               <LogOut size={14} />
-              <span className="ml-2">Log out</span>
+              <span>Logout</span>
             </Button>
           </div>
         </div>
@@ -375,7 +381,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-[rgba(245,190,80,0.18)] bg-slate-950 lg:flex">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[272px] border-r border-[rgba(245,190,80,0.18)] bg-slate-950 lg:flex">
         <SidebarContent showFooterActions />
       </aside>
       <header className="fixed left-0 right-0 top-0 z-50 border-b border-[rgba(245,190,80,0.20)] bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.15),transparent_28%),linear-gradient(180deg,#050916_0%,#080d18_100%)] text-slate-100 shadow-[0_14px_34px_rgba(15,23,42,0.22)] backdrop-blur-md lg:hidden">
@@ -502,7 +508,7 @@ export default function Layout() {
           </nav>
         </div>
       </header>
-      <div className="lg:pl-64">
+      <div className="lg:pl-[272px]">
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-[7.6rem] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
           <div className="w-full px-4 py-5 sm:px-5 lg:px-7 lg:py-6">
             <div className="page-enter">
@@ -514,3 +520,4 @@ export default function Layout() {
     </div>
   );
 }
+
