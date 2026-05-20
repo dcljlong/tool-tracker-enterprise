@@ -11,6 +11,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Menu,
   Moon,
   ScanLine,
@@ -267,6 +268,22 @@ export default function Layout() {
     navigate("/login", { replace: true });
   };
 
+  const handleFeedbackClick = () => {
+    const subject = encodeURIComponent("[Tool Tracker Feedback] Pilot feedback");
+    const body = encodeURIComponent([
+      "App: Tool Tracker",
+      `Page: ${location.pathname}`,
+      `User: ${user?.email || displayName || "Unknown"}`,
+      "",
+      "Feedback type:",
+      "What happened:",
+      "What did you expect:",
+      "How urgent:",
+    ].join("\n"));
+
+    window.location.href = `mailto:longlinesuite.feedback@gmail.com?subject=${subject}&body=${body}`;
+  };
+
   const closeMobileNav = () => setMobileOpen(false);
 
   const SidebarContent = ({ onNav, showFooterActions = true }) => (
@@ -366,6 +383,19 @@ export default function Layout() {
               type="button"
               variant="ghost"
               size="sm"
+              onClick={handleFeedbackClick}
+              className="h-9 w-full rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
+              data-testid="feedback-btn"
+              aria-label="Send Tool Tracker feedback"
+            >
+              <MessageSquare size={14} />
+              <span>Feedback</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={handleLogout}
               className="h-9 w-full rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
               data-testid="logout-btn"
@@ -446,6 +476,18 @@ export default function Layout() {
             <Button
               type="button"
               variant="secondary"
+              onClick={handleFeedbackClick}
+              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
+              data-testid="mobile-feedback-btn"
+              aria-label="Send Tool Tracker feedback"
+            >
+              <MessageSquare size={16} />
+              <span>Feedback</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
               onClick={handleLogout}
               className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
               data-testid="mobile-logout-btn"
@@ -520,4 +562,5 @@ export default function Layout() {
     </div>
   );
 }
+
 
