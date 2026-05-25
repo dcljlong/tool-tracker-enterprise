@@ -1434,7 +1434,7 @@ async def update_tool_compliance_status(tool_id: str):
 async def bulk_checkout(data: BulkCheckout, current_user: dict = Depends(auth_dependency)):
     results = {"success": [], "failed": []}
     for tool_id in data.tool_ids:
-        tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+        tool = await db.tools.find_one(company_filter(current_user, {"id": tool_id}), {"_id": 0})
         if not tool:
             results["failed"].append({"tool_id": tool_id, "reason": "Not found"})
             continue
@@ -1443,19 +1443,33 @@ async def bulk_checkout(data: BulkCheckout, current_user: dict = Depends(auth_de
             continue
         checkout_id = str(uuid.uuid4())
         doc = {
-            "id": checkout_id, "tool_id": tool_id, "tool_asset_id": tool["asset_id"],
+            "id": checkout_id,
+            "company_id": current_company_id(current_user),
+            "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
+            "tool_id": tool_id,
+            "tool_asset_id": tool["asset_id"],
             "tool_description": tool["description"],
-            "checked_out_by_id": current_user["user_id"], "checked_out_by_name": current_user["name"],
-            "job_number": data.job_number, "site": data.site, "site_manager": data.site_manager,
-            "expected_return_date": data.expected_return_date, "notes": data.notes or "",
+            "checked_out_by_id": current_user["user_id"],
+            "checked_out_by_name": current_user["name"],
+            "job_number": data.job_number,
+            "site": data.site,
+            "site_manager": data.site_manager,
+            "expected_return_date": data.expected_return_date,
+            "notes": data.notes or "",
             "checkout_time": datetime.now(timezone.utc).isoformat(),
-            "return_time": None, "return_condition": None, "return_notes": None, "status": "active"
+            "return_time": None,
+            "return_condition": None,
+            "return_notes": None,
+            "status": "active"
         }
         await db.checkouts.insert_one(doc)
-        await db.tools.update_one({"id": tool_id}, {"$set": {
-            "status": "checked_out", "current_holder_id": current_user["user_id"],
-            "current_holder_name": current_user["name"], "current_site": data.site,
-            "current_job": data.job_number, "expected_return_date": data.expected_return_date,
+        await db.tools.update_one(company_filter(current_user, {"id": tool_id}), {"$set": {
+            "status": "checked_out",
+            "current_holder_id": current_user["user_id"],
+            "current_holder_name": current_user["name"],
+            "current_site": data.site,
+            "current_job": data.job_number,
+            "expected_return_date": data.expected_return_date,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }})
         await log_audit(tool_id, "checkout", current_user["user_id"], current_user["name"],
@@ -1467,24 +1481,30 @@ async def bulk_checkout(data: BulkCheckout, current_user: dict = Depends(auth_de
 async def bulk_return(data: BulkReturn, current_user: dict = Depends(auth_dependency)):
     results = {"success": [], "failed": []}
     for tool_id in data.tool_ids:
-        tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+        tool = await db.tools.find_one(company_filter(current_user, {"id": tool_id}), {"_id": 0})
         if not tool:
             results["failed"].append({"tool_id": tool_id, "reason": "Not found"})
             continue
         if tool["status"] != "checked_out":
             results["failed"].append({"tool_id": tool_id, "asset_id": tool.get("asset_id",""), "reason": "Not checked out"})
             continue
-        checkout = await db.checkouts.find_one({"tool_id": tool_id, "status": "active"}, {"_id": 0})
+        checkout = await db.checkouts.find_one(company_filter(current_user, {"tool_id": tool_id, "status": "active"}), {"_id": 0})
         if checkout:
-            await db.checkouts.update_one({"id": checkout["id"]}, {"$set": {
+            await db.checkouts.update_one(company_filter(current_user, {"id": checkout["id"]}), {"$set": {
                 "return_time": datetime.now(timezone.utc).isoformat(),
-                "return_condition": data.condition, "return_notes": data.notes or "", "status": "returned"
+                "return_condition": data.condition,
+                "return_notes": data.notes or "",
+                "status": "returned"
             }})
         new_status = "available" if data.condition != "damaged" else "maintenance_required"
-        await db.tools.update_one({"id": tool_id}, {"$set": {
-            "status": new_status, "condition": data.condition,
-            "current_holder_id": None, "current_holder_name": None,
-            "current_site": None, "current_job": None, "expected_return_date": None,
+        await db.tools.update_one(company_filter(current_user, {"id": tool_id}), {"$set": {
+            "status": new_status,
+            "condition": data.condition,
+            "current_holder_id": None,
+            "current_holder_name": None,
+            "current_site": None,
+            "current_job": None,
+            "expected_return_date": None,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }})
         await log_audit(tool_id, "return", current_user["user_id"], current_user["name"],
