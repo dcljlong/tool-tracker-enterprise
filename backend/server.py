@@ -1031,9 +1031,9 @@ async def tool_activity_report(
     current_user: dict = Depends(auth_dependency)
 ):
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    checkouts = await db.checkouts.find({"checkout_time": {"$gte": since}}, {"_id": 0}).to_list(1000)
-    handovers = await db.handovers.find({"timestamp": {"$gte": since}}, {"_id": 0}).to_list(1000)
-    maintenance = await db.maintenance_actions.find({"timestamp": {"$gte": since}}, {"_id": 0}).to_list(1000)
+    checkouts = await db.checkouts.find(company_filter(current_user, {"checkout_time": {"$gte": since}}), {"_id": 0}).to_list(1000)
+    handovers = await db.handovers.find(company_filter(current_user, {"timestamp": {"$gte": since}}), {"_id": 0}).to_list(1000)
+    maintenance = await db.maintenance_actions.find(company_filter(current_user, {"timestamp": {"$gte": since}}), {"_id": 0}).to_list(1000)
     return {
         "period_days": days,
         "checkouts": len(checkouts),
@@ -1055,18 +1055,18 @@ async def report_summary(
     since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     now_str = datetime.now(timezone.utc).isoformat()
 
-    total_tools = await db.tools.count_documents({})
-    available = await db.tools.count_documents({"status": "available"})
-    checked_out = await db.tools.count_documents({"status": "checked_out"})
-    maintenance = await db.tools.count_documents({"status": "maintenance_required"})
+    total_tools = await db.tools.count_documents(company_filter(current_user))
+    available = await db.tools.count_documents(company_filter(current_user, {"status": "available"}))
+    checked_out = await db.tools.count_documents(company_filter(current_user, {"status": "checked_out"}))
+    maintenance = await db.tools.count_documents(company_filter(current_user, {"status": "maintenance_required"}))
 
-    checkouts = await db.checkouts.find({"checkout_time": {"$gte": since}}, {"_id": 0}).to_list(1000)
+    checkouts = await db.checkouts.find(company_filter(current_user, {"checkout_time": {"$gte": since}}), {"_id": 0}).to_list(1000)
     returns = [c for c in checkouts if c.get("status") == "returned"]
-    handovers = await db.handovers.find({"timestamp": {"$gte": since}}, {"_id": 0}).to_list(1000)
-    maint_actions = await db.maintenance_actions.find({"timestamp": {"$gte": since}}, {"_id": 0}).to_list(1000)
+    handovers = await db.handovers.find(company_filter(current_user, {"timestamp": {"$gte": since}}), {"_id": 0}).to_list(1000)
+    maint_actions = await db.maintenance_actions.find(company_filter(current_user, {"timestamp": {"$gte": since}}), {"_id": 0}).to_list(1000)
 
     overdue = await db.checkouts.find(
-        {"status": "active", "expected_return_date": {"$lt": now_str}}, {"_id": 0}
+        company_filter(current_user, {"status": "active", "expected_return_date": {"$lt": now_str}}), {"_id": 0}
     ).to_list(500)
 
     # Most active users
@@ -1099,7 +1099,7 @@ async def report_summary(
 
 @api_router.get("/reports/export")
 async def export_report(format: str = "csv", current_user: dict = Depends(auth_dependency)):
-    tools = await db.tools.find({}, {"_id": 0}).to_list(5000)
+    tools = await db.tools.find(company_filter(current_user), {"_id": 0}).to_list(5000)
     if format == "csv":
         output = io.StringIO()
         if tools:
@@ -1129,8 +1129,8 @@ async def export_pdf_report(
     subtitle_style = ParagraphStyle('CustomSubtitle', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#64748B'), spaceAfter=16)
     section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=13, spaceAfter=8, spaceBefore=16, textColor=colors.HexColor('#F59E0B'))
 
-    settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
-    company = settings.get("company_name", "Tool Tracker") if settings else "Tool Tracker"
+    settings = await db.settings.find_one(company_filter(current_user, {"id": "app_settings"}), {"_id": 0})
+    company = settings.get("company_name", "Tool Tracker") if settings else current_user.get("company_name", "Tool Tracker")
     now = datetime.now(timezone.utc)
     elements = []
 
@@ -1151,7 +1151,7 @@ async def export_pdf_report(
 
     if report_type == "inventory":
         elements.append(Paragraph("Tool Inventory", section_style))
-        tools = await db.tools.find({}, {"_id": 0}).to_list(5000)
+        tools = await db.tools.find(company_filter(current_user), {"_id": 0}).to_list(5000)
         data = [["Asset ID", "Description", "Category", "Status", "Condition", "Holder", "Site"]]
         for t in tools:
             data.append([
@@ -1169,7 +1169,7 @@ async def export_pdf_report(
         since = (now - timedelta(days=days)).isoformat()
         elements.append(Paragraph(f"Activity Report (Last {days} Days)", section_style))
 
-        checkouts = await db.checkouts.find({"checkout_time": {"$gte": since}}, {"_id": 0}).to_list(1000)
+        checkouts = await db.checkouts.find(company_filter(current_user, {"checkout_time": {"$gte": since}}), {"_id": 0}).to_list(1000)
         elements.append(Paragraph("Checkouts & Returns", ParagraphStyle('SubHead', parent=styles['Heading3'], fontSize=11, spaceBefore=10)))
         data = [["Tool", "User", "Site", "Job", "Checkout", "Status"]]
         for co in checkouts:
@@ -1185,7 +1185,7 @@ async def export_pdf_report(
         else:
             elements.append(Paragraph("No checkout activity in this period.", styles['Normal']))
 
-        handovers = await db.handovers.find({"timestamp": {"$gte": since}}, {"_id": 0}).to_list(1000)
+        handovers = await db.handovers.find(company_filter(current_user, {"timestamp": {"$gte": since}}), {"_id": 0}).to_list(1000)
         elements.append(Spacer(1, 10))
         elements.append(Paragraph("Handovers", ParagraphStyle('SubHead', parent=styles['Heading3'], fontSize=11, spaceBefore=10)))
         data = [["Tool", "From", "To", "Job", "Date"]]
@@ -1206,7 +1206,7 @@ async def export_pdf_report(
         elements.append(Paragraph("Overdue Tools Report", section_style))
         now_str = now.isoformat()
         overdue = await db.checkouts.find(
-            {"status": "active", "expected_return_date": {"$lt": now_str}}, {"_id": 0}
+            company_filter(current_user, {"status": "active", "expected_return_date": {"$lt": now_str}}), {"_id": 0}
         ).to_list(500)
         data = [["Tool", "User", "Site", "Job", "Due Date", "Days Overdue"]]
         for co in overdue:
