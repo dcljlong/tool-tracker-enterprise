@@ -1549,7 +1549,7 @@ async def bulk_return(data: BulkReturn, current_user: dict = Depends(auth_depend
 async def get_calendar_events(current_user: dict = Depends(auth_dependency)):
     events = []
     # Maintenance dates
-    tools = await db.tools.find({"next_maintenance_date": {"$ne": None}}, {"_id": 0}).to_list(1000)
+    tools = await db.tools.find(company_filter(current_user, {"next_maintenance_date": {"$ne": None}}), {"_id": 0}).to_list(1000)
     for t in tools:
         if t.get("next_maintenance_date"):
             events.append({
@@ -1561,7 +1561,7 @@ async def get_calendar_events(current_user: dict = Depends(auth_dependency)):
                 "description": t["description"]
             })
     # Safety tag expiry
-    tools_tags = await db.tools.find({"safety_tag_expiry": {"$ne": None}}, {"_id": 0}).to_list(1000)
+    tools_tags = await db.tools.find(company_filter(current_user, {"safety_tag_expiry": {"$ne": None}}), {"_id": 0}).to_list(1000)
     for t in tools_tags:
         if t.get("safety_tag_expiry"):
             events.append({
@@ -1573,7 +1573,7 @@ async def get_calendar_events(current_user: dict = Depends(auth_dependency)):
                 "description": t["description"]
             })
     # Certificate expiries
-    certs = await db.certificates.find({}, {"_id": 0}).to_list(1000)
+    certs = await db.certificates.find(company_filter(current_user), {"_id": 0}).to_list(1000)
     for c in certs:
         if c.get("expiry_date"):
             events.append({
@@ -1585,7 +1585,7 @@ async def get_calendar_events(current_user: dict = Depends(auth_dependency)):
                 "description": f"{c['certificate_type']} #{c.get('certificate_number','')}"
             })
     # Expected returns
-    active = await db.checkouts.find({"status": "active"}, {"_id": 0}).to_list(1000)
+    active = await db.checkouts.find(company_filter(current_user, {"status": "active"}), {"_id": 0}).to_list(1000)
     for co in active:
         if co.get("expected_return_date"):
             events.append({
