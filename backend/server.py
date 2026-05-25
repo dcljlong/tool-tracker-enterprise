@@ -259,6 +259,8 @@ async def setup_admin(user: UserCreate):
     # Create default settings
     await db.settings.insert_one({
         "id": "app_settings",
+        "company_id": DEFAULT_COMPANY_ID,
+        "company_name": DEFAULT_COMPANY_NAME,
         "email_provider": "",
         "email_api_key": "",
         "sender_email": "",
@@ -690,13 +692,25 @@ async def get_maintenance_history(tool_id: str, current_user: dict = Depends(aut
     return actions
 
 # --- Notifications ---
-async def create_notification(user_id: str, notif_type: str, message: str, tool_id: str = None):
+async def create_notification(
+    user_id: str,
+    notif_type: str,
+    message: str,
+    tool_id: str = None,
+    company_id: str = None,
+    company_name: str = None
+):
+    target_user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    notification_company_id = company_id or (target_user or {}).get("company_id") or DEFAULT_COMPANY_ID
+    notification_company_name = company_name or (target_user or {}).get("company_name") or DEFAULT_COMPANY_NAME
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
         "type": notif_type,
         "message": message,
         "tool_id": tool_id,
+        "company_id": notification_company_id,
+        "company_name": notification_company_name,
         "read": False,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
@@ -704,37 +718,42 @@ async def create_notification(user_id: str, notif_type: str, message: str, tool_
 
 @api_router.get("/notifications")
 async def list_notifications(current_user: dict = Depends(auth_dependency)):
-    query = {"user_id": current_user["user_id"]}
+    query = company_filter(current_user, {"user_id": current_user["user_id"]})
     if current_user["role"] == "admin":
-        query = {}  # Admin sees all
+        query = company_filter(current_user)  # Admin sees all notifications in their workspace only
     notifs = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     return notifs
 
 @api_router.get("/notifications/unread-count")
 async def unread_count(current_user: dict = Depends(auth_dependency)):
-    query = {"read": False, "user_id": current_user["user_id"]}
+    query = company_filter(current_user, {"read": False, "user_id": current_user["user_id"]})
     if current_user["role"] == "admin":
-        query = {"read": False}
+        query = company_filter(current_user, {"read": False})
     count = await db.notifications.count_documents(query)
     return {"count": count}
 
 @api_router.put("/notifications/{notif_id}/read")
 async def mark_read(notif_id: str, current_user: dict = Depends(auth_dependency)):
-    await db.notifications.update_one({"id": notif_id}, {"$set": {"read": True}})
+    query = company_filter(current_user, {"id": notif_id})
+    if current_user["role"] != "admin":
+        query["user_id"] = current_user["user_id"]
+    result = await db.notifications.update_one(query, {"$set": {"read": True}})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Notification not found")
     return {"status": "read"}
 
 @api_router.put("/notifications/read-all")
 async def mark_all_read(current_user: dict = Depends(auth_dependency)):
-    query = {"user_id": current_user["user_id"]}
+    query = company_filter(current_user, {"user_id": current_user["user_id"]})
     if current_user["role"] == "admin":
-        query = {}
+        query = company_filter(current_user)
     await db.notifications.update_many(query, {"$set": {"read": True}})
     return {"status": "all_read"}
 
 # --- Settings ---
 @api_router.get("/settings")
 async def get_settings(current_user: dict = Depends(auth_dependency)):
-    settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
+    settings = await db.settings.find_one(company_filter(current_user, {"id": "app_settings"}), {"_id": 0})
     if not settings:
         return {}
     # Mask API key for non-admin
@@ -747,22 +766,25 @@ async def update_settings(data: SettingsUpdate, current_user: dict = Depends(aut
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
     update_dict = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_dict["company_id"] = current_company_id(current_user)
+    update_dict["company_name"] = current_company_name(current_user)
     update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.settings.update_one({"id": "app_settings"}, {"$set": update_dict}, upsert=True)
-    settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
+    settings_query = company_filter(current_user, {"id": "app_settings"})
+    await db.settings.update_one(settings_query, {"$set": update_dict}, upsert=True)
+    settings = await db.settings.find_one(settings_query, {"_id": 0})
     return settings
 
 @api_router.post("/settings/test-email")
 async def test_email(current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
+    settings = await db.settings.find_one(company_filter(current_user, {"id": "app_settings"}), {"_id": 0})
     if not settings or not settings.get("email_api_key") or not settings.get("sender_email"):
         raise HTTPException(status_code=400, detail="Email not configured")
     try:
         from sendgrid import SendGridAPIClient
         from sendgrid.helpers.mail import Mail
-        user = await db.users.find_one({"id": current_user["user_id"]}, {"_id": 0})
+        user = await db.users.find_one(company_filter(current_user, {"id": current_user["user_id"]}), {"_id": 0})
         message = Mail(
             from_email=settings["sender_email"],
             to_emails=user["email"],
@@ -1731,7 +1753,7 @@ async def startup_tasks():
     await db.tools.create_index("company_id")
     await db.categories.create_index("company_id")
     await db.audit_log.create_index("company_id")
-    for collection_name in ["tools", "categories", "audit_log", "checkouts", "handovers", "maintenance_actions"]:
+    for collection_name in ["tools", "categories", "audit_log", "checkouts", "handovers", "maintenance_actions", "notifications", "settings"]:
         await db[collection_name].update_many(
             {"company_id": {"$exists": False}},
             {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
@@ -1741,7 +1763,9 @@ async def startup_tasks():
     await db.checkouts.create_index("status")
     await db.handovers.create_index("company_id")
     await db.maintenance_actions.create_index("company_id")
+    await db.notifications.create_index("company_id")
     await db.notifications.create_index("user_id")
+    await db.settings.create_index("company_id")
     await db.audit_log.create_index("tool_id")
     await db.certificates.create_index("tool_id")
     await db.certificates.create_index("expiry_date")
