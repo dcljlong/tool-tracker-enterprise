@@ -1605,9 +1605,11 @@ async def health():
     return {"status": "healthy"}
 
 # --- Email Notification Helper ---
-async def send_notification_email(to_email: str, subject: str, html_content: str):
-    """Send email using admin-configured SendGrid settings. Returns True on success."""
-    settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
+async def send_notification_email(to_email: str, subject: str, html_content: str, company_id: str = None, settings: dict = None):
+    """Send email using workspace-configured SendGrid settings. Returns True on success."""
+    target_company_id = normalise_company_id(company_id) if company_id else DEFAULT_COMPANY_ID
+    if settings is None:
+        settings = await db.settings.find_one({"id": "app_settings", "company_id": target_company_id}, {"_id": 0})
     if not settings or not settings.get("email_api_key") or not settings.get("sender_email"):
         return False
     try:
@@ -1629,111 +1631,159 @@ async def send_notification_email(to_email: str, subject: str, html_content: str
 
 # --- Background: Check Expiries & Send Emails ---
 async def check_expiries():
-    settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
-    notify_days = settings.get("notify_days_before", 14) if settings else 14
-    notify_tag = settings.get("notify_tag_expiry", True) if settings else True
-    notify_overdue_pref = settings.get("notify_overdue", True) if settings else True
-    company_name = settings.get("company_name", "Tool Tracker") if settings else "Tool Tracker"
-
     now = datetime.now(timezone.utc)
-    ahead = (now + timedelta(days=notify_days)).isoformat()
     now_str = now.isoformat()
-    admins = await db.users.find({"role": "admin", "is_active": True}, {"_id": 0}).to_list(50)
 
-    # Expiring safety tags
-    if notify_tag:
-        expiring = await db.tools.find({
-            "safety_tag_expiry": {"$ne": None, "$lte": ahead, "$gte": now_str}
-        }, {"_id": 0}).to_list(500)
-        for tool in expiring:
-            for admin in admins:
+    settings_rows = await db.settings.find({"id": "app_settings"}, {"_id": 0}).to_list(500)
+    users_for_company_map = await db.users.find({"is_active": True}, {"_id": 0, "company_id": 1, "company_name": 1}).to_list(1000)
+
+    company_names = {}
+    for user in users_for_company_map:
+        company_id = normalise_company_id(user.get("company_id"))
+        company_names[company_id] = user.get("company_name") or company_names.get(company_id) or DEFAULT_COMPANY_NAME
+
+    settings_by_company = {}
+    for settings in settings_rows:
+        company_id = normalise_company_id(settings.get("company_id"))
+        settings_by_company[company_id] = settings
+        company_names[company_id] = settings.get("company_name") or company_names.get(company_id) or DEFAULT_COMPANY_NAME
+
+    company_ids = sorted(set(company_names.keys()) | set(settings_by_company.keys()) | {DEFAULT_COMPANY_ID})
+
+    for company_id in company_ids:
+        company_name = company_names.get(company_id) or DEFAULT_COMPANY_NAME
+        settings = settings_by_company.get(company_id) or {
+            "company_id": company_id,
+            "company_name": company_name,
+            "notify_days_before": 14,
+            "notify_tag_expiry": True,
+            "notify_overdue": True
+        }
+
+        notify_days = settings.get("notify_days_before", 14)
+        notify_tag = settings.get("notify_tag_expiry", True)
+        notify_overdue_pref = settings.get("notify_overdue", True)
+        company_name = settings.get("company_name") or company_name or "Tool Tracker"
+
+        ahead = (now + timedelta(days=notify_days)).isoformat()
+        admins = await db.users.find({"company_id": company_id, "role": "admin", "is_active": True}, {"_id": 0}).to_list(50)
+
+        # Expiring safety tags
+        if notify_tag and admins:
+            expiring = await db.tools.find({
+                "company_id": company_id,
+                "safety_tag_expiry": {"$ne": None, "$lte": ahead, "$gte": now_str}
+            }, {"_id": 0}).to_list(500)
+            for tool in expiring:
+                for admin in admins:
+                    existing = await db.notifications.find_one({
+                        "company_id": company_id,
+                        "tool_id": tool["id"], "type": "tag_expiry",
+                        "created_at": {"$gte": (now - timedelta(days=1)).isoformat()}
+                    })
+                    if not existing:
+                        msg = f"Safety tag expiring for {tool['asset_id']}: {tool['description']}"
+                        await create_notification(admin["id"], "tag_expiry", msg, tool["id"], company_id=company_id, company_name=company_name)
+                        await send_notification_email(
+                            admin.get("email", ""),
+                            f"[{company_name}] Safety Tag Expiring - {tool['asset_id']}",
+                            f"<h2>Safety Tag Expiry Warning</h2>"
+                            f"<p>Tool <strong>{tool['asset_id']}</strong> ({tool['description']}) has a safety tag expiring on "
+                            f"<strong>{tool['safety_tag_expiry']}</strong>.</p>"
+                            f"<p>Please arrange for inspection or renewal.</p>"
+                            f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>",
+                            company_id=company_id,
+                            settings=settings
+                        )
+
+        # Overdue returns
+        if notify_overdue_pref:
+            overdue_checkouts = await db.checkouts.find({
+                "company_id": company_id,
+                "status": "active", "expected_return_date": {"$lt": now_str}
+            }, {"_id": 0}).to_list(500)
+            for co in overdue_checkouts:
                 existing = await db.notifications.find_one({
-                    "tool_id": tool["id"], "type": "tag_expiry",
+                    "company_id": company_id,
+                    "tool_id": co["tool_id"], "type": "overdue",
                     "created_at": {"$gte": (now - timedelta(days=1)).isoformat()}
                 })
                 if not existing:
-                    msg = f"Safety tag expiring for {tool['asset_id']}: {tool['description']}"
-                    await create_notification(admin["id"], "tag_expiry", msg, tool["id"])
-                    # Send email
-                    await send_notification_email(
-                        admin.get("email", ""),
-                        f"[{company_name}] Safety Tag Expiring - {tool['asset_id']}",
-                        f"<h2>Safety Tag Expiry Warning</h2>"
-                        f"<p>Tool <strong>{tool['asset_id']}</strong> ({tool['description']}) has a safety tag expiring on "
-                        f"<strong>{tool['safety_tag_expiry']}</strong>.</p>"
-                        f"<p>Please arrange for inspection or renewal.</p>"
-                        f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>"
-                    )
+                    msg = f"Tool {co['tool_asset_id']} overdue - held by {co['checked_out_by_name']}"
+                    for admin in admins:
+                        await create_notification(admin["id"], "overdue", msg, co["tool_id"], company_id=company_id, company_name=company_name)
+                        await send_notification_email(
+                            admin.get("email", ""),
+                            f"[{company_name}] Overdue Tool - {co['tool_asset_id']}",
+                            f"<h2>Overdue Tool Return</h2>"
+                            f"<p>Tool <strong>{co['tool_asset_id']}</strong> ({co.get('tool_description','')}) is overdue for return.</p>"
+                            f"<p>Currently held by: <strong>{co['checked_out_by_name']}</strong><br>"
+                            f"Expected return: <strong>{co['expected_return_date']}</strong><br>"
+                            f"Site: {co.get('site','-')} | Job: {co.get('job_number','-')}</p>"
+                            f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>",
+                            company_id=company_id,
+                            settings=settings
+                        )
+                    # Also notify the holder
+                    holder = await db.users.find_one({"id": co["checked_out_by_id"], "company_id": company_id}, {"_id": 0})
+                    if holder:
+                        await create_notification(
+                            co["checked_out_by_id"], "overdue",
+                            f"Your tool {co['tool_asset_id']} is overdue for return!", co["tool_id"],
+                            company_id=company_id, company_name=company_name
+                        )
+                        await send_notification_email(
+                            holder.get("email", ""),
+                            f"[{company_name}] Your Tool is Overdue - {co['tool_asset_id']}",
+                            f"<h2>Tool Return Overdue</h2>"
+                            f"<p>Tool <strong>{co['tool_asset_id']}</strong> was due back on <strong>{co['expected_return_date']}</strong>.</p>"
+                            f"<p>Please return it as soon as possible or contact your site manager.</p>"
+                            f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>",
+                            company_id=company_id,
+                            settings=settings
+                        )
 
-    # Overdue returns
-    if notify_overdue_pref:
-        overdue_checkouts = await db.checkouts.find({
-            "status": "active", "expected_return_date": {"$lt": now_str}
-        }, {"_id": 0}).to_list(500)
-        for co in overdue_checkouts:
-            existing = await db.notifications.find_one({
-                "tool_id": co["tool_id"], "type": "overdue",
-                "created_at": {"$gte": (now - timedelta(days=1)).isoformat()}
-            })
-            if not existing:
-                msg = f"Tool {co['tool_asset_id']} overdue - held by {co['checked_out_by_name']}"
+        # Expiring certificates
+        if admins:
+            expiring_certs = await db.certificates.find({
+                "company_id": company_id,
+                "expiry_date": {"$lte": ahead, "$gte": now_str}
+            }, {"_id": 0}).to_list(500)
+            for cert in expiring_certs:
                 for admin in admins:
-                    await create_notification(admin["id"], "overdue", msg, co["tool_id"])
-                    await send_notification_email(
-                        admin.get("email", ""),
-                        f"[{company_name}] Overdue Tool - {co['tool_asset_id']}",
-                        f"<h2>Overdue Tool Return</h2>"
-                        f"<p>Tool <strong>{co['tool_asset_id']}</strong> ({co.get('tool_description','')}) is overdue for return.</p>"
-                        f"<p>Currently held by: <strong>{co['checked_out_by_name']}</strong><br>"
-                        f"Expected return: <strong>{co['expected_return_date']}</strong><br>"
-                        f"Site: {co.get('site','-')} | Job: {co.get('job_number','-')}</p>"
-                        f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>"
-                    )
-                # Also notify the holder
-                holder = await db.users.find_one({"id": co["checked_out_by_id"]}, {"_id": 0})
-                if holder:
-                    await create_notification(co["checked_out_by_id"], "overdue",
-                        f"Your tool {co['tool_asset_id']} is overdue for return!", co["tool_id"])
-                    await send_notification_email(
-                        holder.get("email", ""),
-                        f"[{company_name}] Your Tool is Overdue - {co['tool_asset_id']}",
-                        f"<h2>Tool Return Overdue</h2>"
-                        f"<p>Tool <strong>{co['tool_asset_id']}</strong> was due back on <strong>{co['expected_return_date']}</strong>.</p>"
-                        f"<p>Please return it as soon as possible or contact your site manager.</p>"
-                        f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>"
-                    )
+                    existing = await db.notifications.find_one({
+                        "company_id": company_id,
+                        "tool_id": cert.get("tool_id"), "type": "cert_expiry",
+                        "created_at": {"$gte": (now - timedelta(days=1)).isoformat()}
+                    })
+                    if not existing:
+                        msg = f"Certificate expiring: {cert['certificate_type']} for {cert.get('tool_asset_id','')} (expires {cert['expiry_date'][:10]})"
+                        await create_notification(admin["id"], "cert_expiry", msg, cert.get("tool_id"), company_id=company_id, company_name=company_name)
+                        await send_notification_email(
+                            admin.get("email", ""),
+                            f"[{company_name}] Certificate Expiring - {cert.get('tool_asset_id','')}",
+                            f"<h2>Certificate Expiry Warning</h2>"
+                            f"<p><strong>{cert['certificate_type']}</strong> for tool <strong>{cert.get('tool_asset_id','')}</strong> "
+                            f"expires on <strong>{cert['expiry_date'][:10]}</strong>.</p>"
+                            f"<p>Inspector: {cert.get('issuer_name','')} | License: {cert.get('issuer_license_number','N/A')}</p>"
+                            f"<p>Please arrange renewal to maintain compliance.</p>"
+                            f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>",
+                            company_id=company_id,
+                            settings=settings
+                        )
 
-    # Expiring certificates
-    expiring_certs = await db.certificates.find({
-        "expiry_date": {"$lte": ahead, "$gte": now_str}
-    }, {"_id": 0}).to_list(500)
-    for cert in expiring_certs:
-        for admin in admins:
-            existing = await db.notifications.find_one({
-                "tool_id": cert.get("tool_id"), "type": "cert_expiry",
-                "created_at": {"$gte": (now - timedelta(days=1)).isoformat()}
-            })
-            if not existing:
-                msg = f"Certificate expiring: {cert['certificate_type']} for {cert.get('tool_asset_id','')} (expires {cert['expiry_date'][:10]})"
-                await create_notification(admin["id"], "cert_expiry", msg, cert.get("tool_id"))
-                await send_notification_email(
-                    admin.get("email", ""),
-                    f"[{company_name}] Certificate Expiring - {cert.get('tool_asset_id','')}",
-                    f"<h2>Certificate Expiry Warning</h2>"
-                    f"<p><strong>{cert['certificate_type']}</strong> for tool <strong>{cert.get('tool_asset_id','')}</strong> "
-                    f"expires on <strong>{cert['expiry_date'][:10]}</strong>.</p>"
-                    f"<p>Inspector: {cert.get('issuer_name','')} | License: {cert.get('issuer_license_number','N/A')}</p>"
-                    f"<p>Please arrange renewal to maintain compliance.</p>"
-                    f"<hr><p style='color:#999;font-size:12px'>{company_name} - Tool Tracker</p>"
-                )
-    # Auto-flag tools with expired certificates
-    expired_certs = await db.certificates.find({"expiry_date": {"$lt": now_str}}, {"_id": 0}).to_list(500)
-    flagged_tools = set()
-    for cert in expired_certs:
-        tid = cert.get("tool_id")
-        if tid and tid not in flagged_tools:
-            flagged_tools.add(tid)
-            await update_tool_compliance_status(tid)
+        # Auto-flag tools with expired certificates
+        expired_certs = await db.certificates.find({
+            "company_id": company_id,
+            "expiry_date": {"$lt": now_str}
+        }, {"_id": 0}).to_list(500)
+        flagged_tools = set()
+        worker_user = {"company_id": company_id, "company_name": company_name}
+        for cert in expired_certs:
+            tid = cert.get("tool_id")
+            if tid and tid not in flagged_tools:
+                flagged_tools.add(tid)
+                await update_tool_compliance_status(tid, worker_user)
 
 # --- Periodic Background Scheduler ---
 async def periodic_expiry_check():
