@@ -68,8 +68,6 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     email: Optional[str] = None
-    company_id: Optional[str] = None
-    company_name: Optional[str] = None
 
 class ToolCreate(BaseModel):
     asset_id: str
@@ -324,8 +322,8 @@ async def create_user(user: UserCreate, current_user: dict = Depends(auth_depend
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     user_id = str(uuid.uuid4())
-    target_company_id = normalise_company_id(user.company_id if current_user["role"] == "admin" else current_user.get("company_id"))
-    target_company_name = (user.company_name if current_user["role"] == "admin" else current_user.get("company_name")) or DEFAULT_COMPANY_NAME
+    target_company_id = current_company_id(current_user)
+    target_company_name = current_user.get("company_name") or DEFAULT_COMPANY_NAME
     doc = {
         "id": user_id,
         "email": user.email.lower().strip(),
@@ -345,9 +343,11 @@ async def update_user(user_id: str, update: UserUpdate, current_user: dict = Dep
     if current_user["role"] != "admin" and current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     update_dict = {k: v for k, v in update.model_dump().items() if v is not None}
+    for protected_field in ("company_id", "company_name", "password"):
+        update_dict.pop(protected_field, None)
     if not update_dict:
         raise HTTPException(status_code=400, detail="No fields to update")
-    user_query = {"id": user_id} if current_user["role"] == "admin" else company_filter(current_user, {"id": user_id})
+    user_query = company_filter(current_user, {"id": user_id})
     await db.users.update_one(user_query, {"$set": update_dict})
     user = await db.users.find_one(user_query, {"_id": 0, "password": 0})
     return user
