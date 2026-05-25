@@ -507,7 +507,7 @@ async def upload_tool_photo(tool_id: str, file: UploadFile = File(...), current_
 # --- Checkout / Return ---
 @api_router.post("/checkout")
 async def checkout_tool(data: CheckoutCreate, current_user: dict = Depends(auth_dependency)):
-    tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": data.tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     if tool["status"] == "checked_out":
@@ -517,6 +517,8 @@ async def checkout_tool(data: CheckoutCreate, current_user: dict = Depends(auth_
     checkout_id = str(uuid.uuid4())
     doc = {
         "id": checkout_id,
+        "company_id": current_company_id(current_user),
+        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
         "tool_id": data.tool_id,
         "tool_asset_id": tool["asset_id"],
         "tool_description": tool["description"],
@@ -534,7 +536,7 @@ async def checkout_tool(data: CheckoutCreate, current_user: dict = Depends(auth_
         "status": "active"
     }
     await db.checkouts.insert_one(doc)
-    await db.tools.update_one({"id": data.tool_id}, {"$set": {
+    await db.tools.update_one(company_filter(current_user, {"id": data.tool_id}), {"$set": {
         "status": "checked_out",
         "current_holder_id": current_user["user_id"],
         "current_holder_name": current_user["name"],
@@ -550,23 +552,23 @@ async def checkout_tool(data: CheckoutCreate, current_user: dict = Depends(auth_
 
 @api_router.post("/return")
 async def return_tool(data: ReturnCreate, current_user: dict = Depends(auth_dependency)):
-    tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": data.tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     if tool["status"] != "checked_out":
         raise HTTPException(status_code=400, detail="Tool is not checked out")
     checkout = await db.checkouts.find_one(
-        {"tool_id": data.tool_id, "status": "active"}, {"_id": 0}
+        company_filter(current_user, {"tool_id": data.tool_id, "status": "active"}), {"_id": 0}
     )
     if checkout:
-        await db.checkouts.update_one({"id": checkout["id"]}, {"$set": {
+        await db.checkouts.update_one(company_filter(current_user, {"id": checkout["id"]}), {"$set": {
             "return_time": datetime.now(timezone.utc).isoformat(),
             "return_condition": data.condition,
             "return_notes": data.notes or "",
             "status": "returned"
         }})
     new_status = "available" if data.condition != "damaged" else "maintenance_required"
-    await db.tools.update_one({"id": data.tool_id}, {"$set": {
+    await db.tools.update_one(company_filter(current_user, {"id": data.tool_id}), {"$set": {
         "status": new_status,
         "condition": data.condition,
         "current_holder_id": None,
@@ -582,7 +584,7 @@ async def return_tool(data: ReturnCreate, current_user: dict = Depends(auth_depe
 
 @api_router.get("/checkouts")
 async def list_checkouts(status: Optional[str] = None, current_user: dict = Depends(auth_dependency)):
-    query = {}
+    query = company_filter(current_user)
     if status:
         query["status"] = status
     checkouts = await db.checkouts.find(query, {"_id": 0}).sort("checkout_time", -1).to_list(500)
@@ -591,17 +593,19 @@ async def list_checkouts(status: Optional[str] = None, current_user: dict = Depe
 # --- Handover ---
 @api_router.post("/handover")
 async def handover_tool(data: HandoverCreate, current_user: dict = Depends(auth_dependency)):
-    tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": data.tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     if tool["status"] != "checked_out":
         raise HTTPException(status_code=400, detail="Tool must be checked out for handover")
-    next_user = await db.users.find_one({"id": data.next_holder_id}, {"_id": 0, "password": 0})
+    next_user = await db.users.find_one(company_filter(current_user, {"id": data.next_holder_id}), {"_id": 0, "password": 0})
     if not next_user:
         raise HTTPException(status_code=404, detail="Next holder not found")
     handover_id = str(uuid.uuid4())
     doc = {
         "id": handover_id,
+        "company_id": current_company_id(current_user),
+        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
         "tool_id": data.tool_id,
         "tool_asset_id": tool["asset_id"],
         "tool_description": tool["description"],
@@ -616,14 +620,14 @@ async def handover_tool(data: HandoverCreate, current_user: dict = Depends(auth_
         "status": "completed"
     }
     await db.handovers.insert_one(doc)
-    await db.tools.update_one({"id": data.tool_id}, {"$set": {
+    await db.tools.update_one(company_filter(current_user, {"id": data.tool_id}), {"$set": {
         "current_holder_id": data.next_holder_id,
         "current_holder_name": next_user["name"],
         "updated_at": datetime.now(timezone.utc).isoformat()
     }})
     # Update active checkout
     await db.checkouts.update_one(
-        {"tool_id": data.tool_id, "status": "active"},
+        company_filter(current_user, {"tool_id": data.tool_id, "status": "active"}),
         {"$set": {
             "checked_out_by_id": data.next_holder_id,
             "checked_out_by_name": next_user["name"]
@@ -640,7 +644,7 @@ async def handover_tool(data: HandoverCreate, current_user: dict = Depends(auth_
 
 @api_router.get("/handovers")
 async def list_handovers(current_user: dict = Depends(auth_dependency)):
-    handovers = await db.handovers.find({}, {"_id": 0}).sort("timestamp", -1).to_list(500)
+    handovers = await db.handovers.find(company_filter(current_user), {"_id": 0}).sort("timestamp", -1).to_list(500)
     return handovers
 
 # --- Maintenance ---
@@ -648,12 +652,14 @@ async def list_handovers(current_user: dict = Depends(auth_dependency)):
 async def record_maintenance(data: MaintenanceAction, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] not in ["admin", "site_manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": data.tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     action_id = str(uuid.uuid4())
     doc = {
         "id": action_id,
+        "company_id": current_company_id(current_user),
+        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
         "tool_id": data.tool_id,
         "tool_asset_id": tool["asset_id"],
         "action_type": data.action_type,
@@ -672,7 +678,7 @@ async def record_maintenance(data: MaintenanceAction, current_user: dict = Depen
         update_fields["condition"] = data.condition
     if data.action_type == "completed" and tool["status"] == "maintenance_required":
         update_fields["status"] = "available"
-    await db.tools.update_one({"id": data.tool_id}, {"$set": update_fields})
+    await db.tools.update_one(company_filter(current_user, {"id": data.tool_id}), {"$set": update_fields})
     await log_audit(data.tool_id, "maintenance", current_user["user_id"], current_user["name"],
                     f"{data.action_type}: {data.description}")
     doc.pop("_id", None)
@@ -680,7 +686,7 @@ async def record_maintenance(data: MaintenanceAction, current_user: dict = Depen
 
 @api_router.get("/maintenance/{tool_id}")
 async def get_maintenance_history(tool_id: str, current_user: dict = Depends(auth_dependency)):
-    actions = await db.maintenance_actions.find({"tool_id": tool_id}, {"_id": 0}).sort("timestamp", -1).to_list(100)
+    actions = await db.maintenance_actions.find(company_filter(current_user, {"tool_id": tool_id}), {"_id": 0}).sort("timestamp", -1).to_list(100)
     return actions
 
 # --- Notifications ---
@@ -1705,13 +1711,16 @@ async def startup_tasks():
     await db.tools.create_index("company_id")
     await db.categories.create_index("company_id")
     await db.audit_log.create_index("company_id")
-    for collection_name in ["tools", "categories", "audit_log"]:
+    for collection_name in ["tools", "categories", "audit_log", "checkouts", "handovers", "maintenance_actions"]:
         await db[collection_name].update_many(
             {"company_id": {"$exists": False}},
             {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
         )
+    await db.checkouts.create_index("company_id")
     await db.checkouts.create_index("tool_id")
     await db.checkouts.create_index("status")
+    await db.handovers.create_index("company_id")
+    await db.maintenance_actions.create_index("company_id")
     await db.notifications.create_index("user_id")
     await db.audit_log.create_index("tool_id")
     await db.certificates.create_index("tool_id")
