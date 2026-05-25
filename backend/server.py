@@ -10,7 +10,7 @@ import asyncio
 import re
 from pathlib import Path
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone, timedelta
 import jwt
@@ -42,18 +42,23 @@ JWT_EXPIRY_HOURS = 24
 UPLOADS_DIR = ROOT_DIR / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
 
+DEFAULT_COMPANY_ID = os.environ.get("DEFAULT_COMPANY_ID", "default-company").strip() or "default-company"
+DEFAULT_COMPANY_NAME = os.environ.get("DEFAULT_COMPANY_NAME", "Default Workspace").strip() or "Default Workspace"
+
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# ─── Pydantic Models ────────────────────────────────────────────
+# --- Pydantic Models ---
 class UserCreate(BaseModel):
     email: str
     password: str
     name: str
     role: str = "worker"
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: str
@@ -63,6 +68,8 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     email: Optional[str] = None
+    company_id: Optional[str] = None
+    company_name: Optional[str] = None
 
 class ToolCreate(BaseModel):
     asset_id: str
@@ -162,7 +169,7 @@ class BulkReturn(BaseModel):
     condition: str = "good"
     notes: Optional[str] = ""
 
-# ─── Auth Helpers ────────────────────────────────────────────────
+# --- Auth Helpers ---
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -181,12 +188,35 @@ def create_token(user_id: str, role: str, name: str) -> str:
 def decode_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
 
+def normalise_company_id(value: Optional[str]) -> str:
+    clean = (value or "").strip()
+    return clean or DEFAULT_COMPANY_ID
+
+def current_company_id(current_user: Dict[str, Any]) -> str:
+    return normalise_company_id(current_user.get("company_id"))
+
+def company_filter(current_user: Dict[str, Any], extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    query = {"company_id": current_company_id(current_user)}
+    if extra:
+        query.update(extra)
+    return query
+
 async def get_current_user(token: str = None):
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
     token = token.replace("Bearer ", "")
     try:
         payload = decode_token(token)
+        user_id = payload.get("user_id")
+        if user_id:
+            user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+            if user:
+                user["user_id"] = user.get("id")
+                user["company_id"] = normalise_company_id(user.get("company_id"))
+                user["company_name"] = user.get("company_name") or DEFAULT_COMPANY_NAME
+                return user
+        payload["company_id"] = normalise_company_id(payload.get("company_id"))
+        payload["company_name"] = payload.get("company_name") or DEFAULT_COMPANY_NAME
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -201,13 +231,13 @@ async def auth_dependency(request: Request):
         raise HTTPException(status_code=401, detail="Not authenticated")
     return await get_current_user(auth_header)
 
-# ─── First Run Check ────────────────────────────────────────────
+# --- First Run Check ---
 @api_router.get("/setup/check")
 async def check_first_run():
     user_count = await db.users.count_documents({})
     return {"is_first_run": user_count == 0}
 
-# ─── Auth Routes ────────────────────────────────────────────────
+# --- Auth Routes ---
 @api_router.post("/auth/setup")
 async def setup_admin(user: UserCreate):
     existing = await db.users.count_documents({})
@@ -220,6 +250,8 @@ async def setup_admin(user: UserCreate):
         "password": hash_password(user.password),
         "name": user.name,
         "role": "admin",
+        "company_id": DEFAULT_COMPANY_ID,
+        "company_name": DEFAULT_COMPANY_NAME,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "is_active": True
     }
@@ -247,8 +279,10 @@ async def login(user: UserLogin):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not found.get("is_active", True):
         raise HTTPException(status_code=403, detail="Account disabled")
+    found["company_id"] = normalise_company_id(found.get("company_id"))
+    found["company_name"] = found.get("company_name") or DEFAULT_COMPANY_NAME
     token = create_token(found["id"], found["role"], found["name"])
-    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"]}}
+    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"]}}
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(auth_dependency)):
@@ -257,7 +291,7 @@ async def get_me(current_user: dict = Depends(auth_dependency)):
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
-# ─── User Management ────────────────────────────────────────────
+# --- User Management ---
 @api_router.get("/users")
 async def list_users(
     search: Optional[str] = None,
@@ -265,7 +299,7 @@ async def list_users(
     status: Optional[str] = None,
     current_user: dict = Depends(auth_dependency)
 ):
-    query = {}
+    query = company_filter(current_user)
     if role:
         query["role"] = role
     if status == "active":
@@ -288,17 +322,21 @@ async def create_user(user: UserCreate, current_user: dict = Depends(auth_depend
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     user_id = str(uuid.uuid4())
+    target_company_id = normalise_company_id(user.company_id if current_user["role"] == "admin" else current_user.get("company_id"))
+    target_company_name = (user.company_name if current_user["role"] == "admin" else current_user.get("company_name")) or DEFAULT_COMPANY_NAME
     doc = {
         "id": user_id,
         "email": user.email.lower().strip(),
         "password": hash_password(user.password),
         "name": user.name,
         "role": user.role,
+        "company_id": target_company_id,
+        "company_name": target_company_name,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "is_active": True
     }
     await db.users.insert_one(doc)
-    return {"id": user_id, "email": doc["email"], "name": user.name, "role": user.role}
+    return {"id": user_id, "email": doc["email"], "name": user.name, "role": user.role, "company_id": doc["company_id"], "company_name": doc["company_name"]}
 
 @api_router.put("/users/{user_id}")
 async def update_user(user_id: str, update: UserUpdate, current_user: dict = Depends(auth_dependency)):
@@ -307,18 +345,19 @@ async def update_user(user_id: str, update: UserUpdate, current_user: dict = Dep
     update_dict = {k: v for k, v in update.model_dump().items() if v is not None}
     if not update_dict:
         raise HTTPException(status_code=400, detail="No fields to update")
-    await db.users.update_one({"id": user_id}, {"$set": update_dict})
-    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    user_query = {"id": user_id} if current_user["role"] == "admin" else company_filter(current_user, {"id": user_id})
+    await db.users.update_one(user_query, {"$set": update_dict})
+    user = await db.users.find_one(user_query, {"_id": 0, "password": 0})
     return user
 
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    await db.users.update_one({"id": user_id}, {"$set": {"is_active": False}})
+    await db.users.update_one(company_filter(current_user, {"id": user_id}), {"$set": {"is_active": False}})
     return {"status": "deactivated"}
 
-# ─── Tool CRUD ──────────────────────────────────────────────────
+# --- Tool CRUD ---
 @api_router.get("/tools")
 async def list_tools(
     status: Optional[str] = None,
@@ -421,7 +460,7 @@ async def delete_tool(tool_id: str, current_user: dict = Depends(auth_dependency
     await log_audit(tool_id, "deleted", current_user["user_id"], current_user["name"], "Tool deleted")
     return {"status": "deleted"}
 
-# ─── QR Code ────────────────────────────────────────────────────
+# --- QR Code ---
 @api_router.get("/tools/{tool_id}/qr")
 async def get_tool_qr(tool_id: str, current_user: dict = Depends(auth_dependency)):
     tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
@@ -438,7 +477,7 @@ async def get_tool_qr(tool_id: str, current_user: dict = Depends(auth_dependency
     b64 = base64.b64encode(buf.getvalue()).decode()
     return {"qr_code": f"data:image/png;base64,{b64}", "asset_id": tool["asset_id"]}
 
-# ─── Photo Upload ────────────────────────────────────────────────
+# --- Photo Upload ---
 @api_router.post("/tools/{tool_id}/photo")
 async def upload_tool_photo(tool_id: str, file: UploadFile = File(...), current_user: dict = Depends(auth_dependency)):
     tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
@@ -459,7 +498,7 @@ async def upload_tool_photo(tool_id: str, file: UploadFile = File(...), current_
     await log_audit(tool_id, "photo_upload", current_user["user_id"], current_user["name"], "Photo uploaded")
     return {"photo_url": photo_url}
 
-# ─── Checkout / Return ──────────────────────────────────────────
+# --- Checkout / Return ---
 @api_router.post("/checkout")
 async def checkout_tool(data: CheckoutCreate, current_user: dict = Depends(auth_dependency)):
     tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
@@ -543,7 +582,7 @@ async def list_checkouts(status: Optional[str] = None, current_user: dict = Depe
     checkouts = await db.checkouts.find(query, {"_id": 0}).sort("checkout_time", -1).to_list(500)
     return checkouts
 
-# ─── Handover ────────────────────────────────────────────────────
+# --- Handover ---
 @api_router.post("/handover")
 async def handover_tool(data: HandoverCreate, current_user: dict = Depends(auth_dependency)):
     tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
@@ -598,7 +637,7 @@ async def list_handovers(current_user: dict = Depends(auth_dependency)):
     handovers = await db.handovers.find({}, {"_id": 0}).sort("timestamp", -1).to_list(500)
     return handovers
 
-# ─── Maintenance ─────────────────────────────────────────────────
+# --- Maintenance ---
 @api_router.post("/maintenance")
 async def record_maintenance(data: MaintenanceAction, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] not in ["admin", "site_manager"]:
@@ -638,7 +677,7 @@ async def get_maintenance_history(tool_id: str, current_user: dict = Depends(aut
     actions = await db.maintenance_actions.find({"tool_id": tool_id}, {"_id": 0}).sort("timestamp", -1).to_list(100)
     return actions
 
-# ─── Notifications ───────────────────────────────────────────────
+# --- Notifications ---
 async def create_notification(user_id: str, notif_type: str, message: str, tool_id: str = None):
     doc = {
         "id": str(uuid.uuid4()),
@@ -680,7 +719,7 @@ async def mark_all_read(current_user: dict = Depends(auth_dependency)):
     await db.notifications.update_many(query, {"$set": {"read": True}})
     return {"status": "all_read"}
 
-# ─── Settings ────────────────────────────────────────────────────
+# --- Settings ---
 @api_router.get("/settings")
 async def get_settings(current_user: dict = Depends(auth_dependency)):
     settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
@@ -724,7 +763,7 @@ async def test_email(current_user: dict = Depends(auth_dependency)):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Email test failed: {str(e)}")
 
-# ─── Dashboard Stats ─────────────────────────────────────────────
+# --- Dashboard Stats ---
 @api_router.get("/dashboard/stats")
 async def dashboard_stats(current_user: dict = Depends(auth_dependency)):
     total = await db.tools.count_documents({})
@@ -760,7 +799,7 @@ async def recent_activity(current_user: dict = Depends(auth_dependency)):
     audits = await db.audit_log.find({}, {"_id": 0}).sort("timestamp", -1).to_list(20)
     return audits
 
-# ─── Audit Log ───────────────────────────────────────────────────
+# --- Audit Log ---
 async def log_audit(tool_id: str, action: str, user_id: str, user_name: str, details: str):
     doc = {
         "id": str(uuid.uuid4()),
@@ -778,7 +817,7 @@ async def get_audit_trail(tool_id: str, current_user: dict = Depends(auth_depend
     audits = await db.audit_log.find({"tool_id": tool_id}, {"_id": 0}).sort("timestamp", -1).to_list(200)
     return audits
 
-# ─── Import ──────────────────────────────────────────────────────
+# --- Import ---
 @api_router.post("/import/tools")
 async def import_tools(file: UploadFile = File(...), current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
@@ -948,7 +987,7 @@ async def import_tools(file: UploadFile = File(...), current_user: dict = Depend
         raise HTTPException(status_code=400, detail=f"Import failed: {str(e)}")
     return {"imported": imported, "errors": errors}
 
-# ─── Reports ─────────────────────────────────────────────────────
+# --- Reports ---
 @api_router.get("/reports/tool-activity")
 async def tool_activity_report(
     days: int = 7,
@@ -1161,7 +1200,7 @@ async def export_pdf_report(
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
-# ─── Categories CRUD ─────────────────────────────────────────────
+# --- Categories CRUD ---
 class CategoryCreate(BaseModel):
     name: str
     description: Optional[str] = ""
@@ -1224,7 +1263,7 @@ async def delete_category(cat_id: str, current_user: dict = Depends(auth_depende
     await db.categories.delete_one({"id": cat_id})
     return {"status": "deleted"}
 
-# ─── Compliance Certificates ─────────────────────────────────────
+# --- Compliance Certificates ---
 NZ_CERT_TYPES = [
     "Annual Inspection", "Load Test Certificate", "Electrical Test & Tag",
     "Scaffold Inspection", "Pressure Vessel WOF", "Fall Arrest Inspection",
@@ -1366,7 +1405,7 @@ async def update_tool_compliance_status(tool_id: str):
             "updated_at": datetime.now(timezone.utc).isoformat()
         }})
 
-# ─── Bulk Checkout / Return ──────────────────────────────────────
+# --- Checkout / Return ---
 @api_router.post("/bulk-checkout")
 async def bulk_checkout(data: BulkCheckout, current_user: dict = Depends(auth_dependency)):
     results = {"success": [], "failed": []}
@@ -1429,7 +1468,7 @@ async def bulk_return(data: BulkReturn, current_user: dict = Depends(auth_depend
         results["success"].append({"tool_id": tool_id, "asset_id": tool["asset_id"]})
     return results
 
-# ─── Calendar Events ─────────────────────────────────────────────
+# --- Calendar Events ---
 @api_router.get("/calendar/events")
 async def get_calendar_events(current_user: dict = Depends(auth_dependency)):
     events = []
@@ -1484,12 +1523,12 @@ async def get_calendar_events(current_user: dict = Depends(auth_dependency)):
     events.sort(key=lambda e: e["date"])
     return events
 
-# ─── Health Check ────────────────────────────────────────────────
+# --- Health Check ---
 @api_router.get("/health")
 async def health():
     return {"status": "healthy"}
 
-# ─── Email Notification Helper ───────────────────────────────────
+# --- Email Notification Helper ---
 async def send_notification_email(to_email: str, subject: str, html_content: str):
     """Send email using admin-configured SendGrid settings. Returns True on success."""
     settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
@@ -1512,7 +1551,7 @@ async def send_notification_email(to_email: str, subject: str, html_content: str
         logger.error(f"Email send failed to {to_email}: {e}")
         return False
 
-# ─── Background: Check Expiries & Send Emails ───────────────────
+# --- Background: Check Expiries & Send Emails ---
 async def check_expiries():
     settings = await db.settings.find_one({"id": "app_settings"}, {"_id": 0})
     notify_days = settings.get("notify_days_before", 14) if settings else 14
@@ -1620,7 +1659,7 @@ async def check_expiries():
             flagged_tools.add(tid)
             await update_tool_compliance_status(tid)
 
-# ─── Periodic Background Scheduler ──────────────────────────────
+# --- Periodic Background Scheduler ---
 async def periodic_expiry_check():
     """Run expiry/overdue checks every hour."""
     while True:
@@ -1637,6 +1676,11 @@ async def startup_tasks():
     # Create indexes
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
+    await db.users.create_index("company_id")
+    await db.users.update_many(
+        {"company_id": {"$exists": False}},
+        {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
+    )
     await db.tools.create_index("id", unique=True)
     await db.tools.create_index("asset_id", unique=True)
     await db.tools.create_index("status")
@@ -1663,6 +1707,8 @@ async def startup_tasks():
                 "password": hash_password(admin_password),
                 "name": admin_name,
                 "role": "admin",
+                "company_id": DEFAULT_COMPANY_ID,
+                "company_name": DEFAULT_COMPANY_NAME,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "is_active": True
             })
@@ -1672,7 +1718,9 @@ async def startup_tasks():
                 "email": admin_email,
                 "name": existing.get("name") or admin_name,
                 "role": "admin",
-                "is_active": True
+                "is_active": True,
+                "company_id": existing.get("company_id") or DEFAULT_COMPANY_ID,
+                "company_name": existing.get("company_name") or DEFAULT_COMPANY_NAME
             }
 
             if not existing.get("password") or not verify_password(admin_password, existing["password"]):
