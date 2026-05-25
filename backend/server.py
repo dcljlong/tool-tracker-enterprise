@@ -1333,7 +1333,7 @@ async def list_certificates(
     status: Optional[str] = None,
     current_user: dict = Depends(auth_dependency)
 ):
-    query = {}
+    query = company_filter(current_user)
     if tool_id:
         query["tool_id"] = tool_id
     now_str = datetime.now(timezone.utc).isoformat()
@@ -1355,12 +1355,14 @@ async def list_certificates(
 async def create_certificate(data: CertificateCreate, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] not in ["admin", "site_manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    tool = await db.tools.find_one({"id": data.tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": data.tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     cert_id = str(uuid.uuid4())
     doc = {
         "id": cert_id,
+        "company_id": current_company_id(current_user),
+        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
         "tool_id": data.tool_id,
         "tool_asset_id": tool["asset_id"],
         "tool_description": tool["description"],
@@ -1381,7 +1383,7 @@ async def create_certificate(data: CertificateCreate, current_user: dict = Depen
     await log_audit(data.tool_id, "certificate_added", current_user["user_id"], current_user["name"],
                     f"Certificate added: {data.certificate_type} (expires {data.expiry_date})")
     # Check if any certs are expired and flag tool
-    await update_tool_compliance_status(data.tool_id)
+    await update_tool_compliance_status(data.tool_id, current_user)
     doc.pop("_id", None)
     return doc
 
@@ -1392,26 +1394,31 @@ async def update_certificate(cert_id: str, data: CertificateUpdate, current_user
     update_dict = {k: v for k, v in data.model_dump().items() if v is not None}
     if not update_dict:
         raise HTTPException(status_code=400, detail="No fields to update")
-    await db.certificates.update_one({"id": cert_id}, {"$set": update_dict})
-    cert = await db.certificates.find_one({"id": cert_id}, {"_id": 0})
+    cert_query = company_filter(current_user, {"id": cert_id})
+    result = await db.certificates.update_one(cert_query, {"$set": update_dict})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+    cert = await db.certificates.find_one(cert_query, {"_id": 0})
     if cert:
-        await update_tool_compliance_status(cert["tool_id"])
+        await update_tool_compliance_status(cert["tool_id"], current_user)
     return cert
 
 @api_router.delete("/certificates/{cert_id}")
 async def delete_certificate(cert_id: str, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] not in ["admin", "site_manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    cert = await db.certificates.find_one({"id": cert_id}, {"_id": 0})
+    cert_query = company_filter(current_user, {"id": cert_id})
+    cert = await db.certificates.find_one(cert_query, {"_id": 0})
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
-    await db.certificates.delete_one({"id": cert_id})
-    await update_tool_compliance_status(cert["tool_id"])
+    await db.certificates.delete_one(cert_query)
+    await update_tool_compliance_status(cert["tool_id"], current_user)
     return {"status": "deleted"}
 
 @api_router.post("/certificates/{cert_id}/document")
 async def upload_cert_document(cert_id: str, file: UploadFile = File(...), current_user: dict = Depends(auth_dependency)):
-    cert = await db.certificates.find_one({"id": cert_id}, {"_id": 0})
+    cert_query = company_filter(current_user, {"id": cert_id})
+    cert = await db.certificates.find_one(cert_query, {"_id": 0})
     if not cert:
         raise HTTPException(status_code=404, detail="Certificate not found")
     allowed = ["application/pdf", "image/jpeg", "image/png", "image/webp"]
@@ -1426,26 +1433,29 @@ async def upload_cert_document(cert_id: str, file: UploadFile = File(...), curre
     with open(filepath, "wb") as f:
         f.write(content)
     doc_url = f"/api/uploads/{filename}"
-    await db.certificates.update_one({"id": cert_id}, {"$set": {"document_url": doc_url}})
+    await db.certificates.update_one(cert_query, {"$set": {"document_url": doc_url}})
     return {"document_url": doc_url}
 
-async def update_tool_compliance_status(tool_id: str):
-    """Check all certs for a tool. If any expired, flag tool as non-compliant."""
+async def update_tool_compliance_status(tool_id: str, current_user: dict = None):
+    """Check all certs for a workspace tool. If any expired, flag tool as non-compliant."""
     now_str = datetime.now(timezone.utc).isoformat()
-    expired_certs = await db.certificates.count_documents({
-        "tool_id": tool_id, "expiry_date": {"$lt": now_str}
-    })
-    tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+    tool_query = company_filter(current_user, {"id": tool_id}) if current_user else {"id": tool_id}
+    tool = await db.tools.find_one(tool_query, {"_id": 0})
     if not tool:
         return
+    tool_company_id = normalise_company_id(tool.get("company_id"))
+    scoped_tool_query = {"id": tool_id, "company_id": tool_company_id}
+    expired_certs = await db.certificates.count_documents({
+        "company_id": tool_company_id, "tool_id": tool_id, "expiry_date": {"$lt": now_str}
+    })
     if expired_certs > 0 and tool["status"] != "checked_out":
-        await db.tools.update_one({"id": tool_id}, {"$set": {
+        await db.tools.update_one(scoped_tool_query, {"$set": {
             "status": "maintenance_required",
             "notes": f"Non-compliant: {expired_certs} expired certificate(s)",
             "updated_at": datetime.now(timezone.utc).isoformat()
         }})
     elif expired_certs == 0 and tool["status"] == "maintenance_required" and "expired certificate" in (tool.get("notes") or "").lower():
-        await db.tools.update_one({"id": tool_id}, {"$set": {
+        await db.tools.update_one(scoped_tool_query, {"$set": {
             "status": "available",
             "notes": "",
             "updated_at": datetime.now(timezone.utc).isoformat()
@@ -1753,7 +1763,7 @@ async def startup_tasks():
     await db.tools.create_index("company_id")
     await db.categories.create_index("company_id")
     await db.audit_log.create_index("company_id")
-    for collection_name in ["tools", "categories", "audit_log", "checkouts", "handovers", "maintenance_actions", "notifications", "settings"]:
+    for collection_name in ["tools", "categories", "audit_log", "checkouts", "handovers", "maintenance_actions", "notifications", "settings", "certificates"]:
         await db[collection_name].update_many(
             {"company_id": {"$exists": False}},
             {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
@@ -1767,6 +1777,7 @@ async def startup_tasks():
     await db.notifications.create_index("user_id")
     await db.settings.create_index("company_id")
     await db.audit_log.create_index("tool_id")
+    await db.certificates.create_index("company_id")
     await db.certificates.create_index("tool_id")
     await db.certificates.create_index("expiry_date")
     # Check expiries on startup
