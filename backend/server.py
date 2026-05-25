@@ -871,6 +871,8 @@ async def import_tools(file: UploadFile = File(...), current_user: dict = Depend
                     tool_id = str(uuid.uuid4())
                     doc = {
                         "id": tool_id,
+                        "company_id": current_company_id(current_user),
+                        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
                         "asset_id": row.get("asset_id", row.get("Asset ID", f"IMP-{i+1}")),
                         "description": row.get("description", row.get("Description", "")),
                         "category": row.get("category", row.get("Category", "General")),
@@ -904,6 +906,8 @@ async def import_tools(file: UploadFile = File(...), current_user: dict = Depend
                     tool_id = str(uuid.uuid4())
                     doc = {
                         "id": tool_id,
+                        "company_id": current_company_id(current_user),
+                        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
                         "asset_id": str(row_dict.get("asset_id", row_dict.get("Asset ID", f"IMP-{i}"))),
                         "description": str(row_dict.get("description", row_dict.get("Description", ""))),
                         "category": str(row_dict.get("category", row_dict.get("Category", "General"))),
@@ -961,6 +965,8 @@ async def import_tools(file: UploadFile = File(...), current_user: dict = Depend
                         tool_id = str(uuid.uuid4())
                         doc = {
                             "id": tool_id,
+                            "company_id": current_company_id(current_user),
+                            "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
                             "asset_id": row_dict.get("asset_id", row_dict.get("asset", f"PDF-{i}")),
                             "description": row_dict.get("description", row_dict.get("desc", "")),
                             "category": row_dict.get("category", row_dict.get("cat", "General")),
@@ -993,6 +999,8 @@ async def import_tools(file: UploadFile = File(...), current_user: dict = Depend
                         tool_id = str(uuid.uuid4())
                         doc = {
                             "id": tool_id,
+                            "company_id": current_company_id(current_user),
+                            "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
                             "asset_id": f"PDF-{i:04d}",
                             "description": line,
                             "category": "General",
