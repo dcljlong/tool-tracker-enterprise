@@ -367,7 +367,7 @@ async def list_tools(
     search: Optional[str] = None,
     current_user: dict = Depends(auth_dependency)
 ):
-    query = {}
+    query = company_filter(current_user)
     if status:
         query["status"] = status
     if category:
@@ -384,7 +384,7 @@ async def list_tools(
     # If filtering by site, get active checkouts for that site
     if site:
         checkout_tool_ids = await db.checkouts.find(
-            {"site": site, "status": "active"}, {"tool_id": 1, "_id": 0}
+            company_filter(current_user, {"site": site, "status": "active"}), {"tool_id": 1, "_id": 0}
         ).to_list(2000)
         site_tool_ids = [c["tool_id"] for c in checkout_tool_ids]
         tools = [t for t in tools if t["id"] in site_tool_ids]
@@ -394,7 +394,7 @@ async def list_tools(
 async def create_tool(tool: ToolCreate, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] not in ["admin", "site_manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
-    existing = await db.tools.find_one({"asset_id": tool.asset_id})
+    existing = await db.tools.find_one(company_filter(current_user, {"asset_id": tool.asset_id}))
     if existing:
         raise HTTPException(status_code=400, detail="Asset ID already exists")
     tool_id = str(uuid.uuid4())
@@ -426,7 +426,9 @@ async def create_tool(tool: ToolCreate, current_user: dict = Depends(auth_depend
         "current_job": None,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
-        "created_by": current_user["user_id"]
+        "created_by": current_user["user_id"],
+        "company_id": current_company_id(current_user),
+        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME
     }
     await db.tools.insert_one(doc)
     # Log audit
@@ -436,7 +438,7 @@ async def create_tool(tool: ToolCreate, current_user: dict = Depends(auth_depend
 
 @api_router.get("/tools/{tool_id}")
 async def get_tool(tool_id: str, current_user: dict = Depends(auth_dependency)):
-    tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     return tool
@@ -447,23 +449,27 @@ async def update_tool(tool_id: str, update: ToolUpdate, current_user: dict = Dep
         raise HTTPException(status_code=403, detail="Insufficient permissions")
     update_dict = {k: v for k, v in update.model_dump().items() if v is not None}
     update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
-    await db.tools.update_one({"id": tool_id}, {"$set": update_dict})
+    result = await db.tools.update_one(company_filter(current_user, {"id": tool_id}), {"$set": update_dict})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tool not found")
     await log_audit(tool_id, "updated", current_user["user_id"], current_user["name"], f"Updated: {', '.join(update_dict.keys())}")
-    tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": tool_id}), {"_id": 0})
     return tool
 
 @api_router.delete("/tools/{tool_id}")
 async def delete_tool(tool_id: str, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    await db.tools.delete_one({"id": tool_id})
+    result = await db.tools.delete_one(company_filter(current_user, {"id": tool_id}))
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tool not found")
     await log_audit(tool_id, "deleted", current_user["user_id"], current_user["name"], "Tool deleted")
     return {"status": "deleted"}
 
 # --- QR Code ---
 @api_router.get("/tools/{tool_id}/qr")
 async def get_tool_qr(tool_id: str, current_user: dict = Depends(auth_dependency)):
-    tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     qr_data = json.dumps({"tool_id": tool_id, "asset_id": tool["asset_id"], "description": tool["description"]})
@@ -480,7 +486,7 @@ async def get_tool_qr(tool_id: str, current_user: dict = Depends(auth_dependency
 # --- Photo Upload ---
 @api_router.post("/tools/{tool_id}/photo")
 async def upload_tool_photo(tool_id: str, file: UploadFile = File(...), current_user: dict = Depends(auth_dependency)):
-    tool = await db.tools.find_one({"id": tool_id}, {"_id": 0})
+    tool = await db.tools.find_one(company_filter(current_user, {"id": tool_id}), {"_id": 0})
     if not tool:
         raise HTTPException(status_code=404, detail="Tool not found")
     if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
@@ -494,7 +500,7 @@ async def upload_tool_photo(tool_id: str, file: UploadFile = File(...), current_
     with open(filepath, "wb") as f:
         f.write(content)
     photo_url = f"/api/uploads/{filename}"
-    await db.tools.update_one({"id": tool_id}, {"$set": {"photo_url": photo_url, "updated_at": datetime.now(timezone.utc).isoformat()}})
+    await db.tools.update_one(company_filter(current_user, {"id": tool_id}), {"$set": {"photo_url": photo_url, "updated_at": datetime.now(timezone.utc).isoformat()}})
     await log_audit(tool_id, "photo_upload", current_user["user_id"], current_user["name"], "Photo uploaded")
     return {"photo_url": photo_url}
 
@@ -1684,6 +1690,11 @@ async def startup_tasks():
     await db.tools.create_index("id", unique=True)
     await db.tools.create_index("asset_id", unique=True)
     await db.tools.create_index("status")
+    await db.tools.create_index("company_id")
+    await db.tools.update_many(
+        {"company_id": {"$exists": False}},
+        {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
+    )
     await db.checkouts.create_index("tool_id")
     await db.checkouts.create_index("status")
     await db.notifications.create_index("user_id")
