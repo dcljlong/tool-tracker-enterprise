@@ -69,6 +69,10 @@ class UserUpdate(BaseModel):
     role: Optional[str] = None
     email: Optional[str] = None
 
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
+
 class ToolCreate(BaseModel):
     asset_id: str
     description: str
@@ -290,6 +294,19 @@ async def get_me(current_user: dict = Depends(auth_dependency)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@api_router.post("/auth/change-password")
+async def change_password(data: PasswordChange, current_user: dict = Depends(auth_dependency)):
+    if len(data.new_password or "") < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    user_query = company_filter(current_user, {"id": current_user["user_id"]})
+    user = await db.users.find_one(user_query, {"_id": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not verify_password(data.current_password, user["password"]):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    await db.users.update_one(user_query, {"$set": {"password": hash_password(data.new_password), "password_updated_at": datetime.now(timezone.utc).isoformat()}})
+    return {"status": "password_changed"}
 
 # --- User Management ---
 @api_router.get("/users")

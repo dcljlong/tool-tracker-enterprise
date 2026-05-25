@@ -7,6 +7,7 @@ import {
   Building2,
   Clock3,
   ExternalLink,
+  KeyRound,
   FileText,
   FolderOpen,
   LayoutDashboard,
@@ -26,7 +27,11 @@ import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { toast } from "sonner";
 import toolTrackerLogo from "@/assets/tool-tracker-logo.png";
 
 const NAV_ITEMS = [
@@ -232,6 +237,14 @@ export default function Layout() {
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changePasswordBusy, setChangePasswordBusy] = useState(false);
+  const [changePasswordData, setChangePasswordData] = useState({
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
+  const [changePasswordError, setChangePasswordError] = useState("");
 
   const displayName = getDisplayName(user);
   const roleLabel = formatRole(user?.role);
@@ -282,6 +295,56 @@ export default function Layout() {
     ].join("\n"));
 
     window.location.href = `mailto:longlinesuite.feedback@gmail.com?subject=${subject}&body=${body}`;
+  };
+
+  const resetChangePassword = () => {
+    setChangePasswordOpen(false);
+    setChangePasswordBusy(false);
+    setChangePasswordError("");
+    setChangePasswordData({
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    });
+  };
+
+  const updateChangePasswordField = (field, value) => {
+    setChangePasswordData((current) => ({ ...current, [field]: value }));
+    setChangePasswordError("");
+  };
+
+  const handleChangePasswordSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!changePasswordData.current_password) {
+      setChangePasswordError("Enter your current password.");
+      return;
+    }
+
+    if ((changePasswordData.new_password || "").length < 6) {
+      setChangePasswordError("New password must be at least 6 characters.");
+      return;
+    }
+
+    if (changePasswordData.new_password !== changePasswordData.confirm_password) {
+      setChangePasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    setChangePasswordBusy(true);
+
+    try {
+      await api.post("/auth/change-password", {
+        current_password: changePasswordData.current_password,
+        new_password: changePasswordData.new_password,
+      });
+      toast.success("Password updated");
+      resetChangePassword();
+    } catch (error) {
+      setChangePasswordError(error?.response?.data?.detail || "Password update failed.");
+    } finally {
+      setChangePasswordBusy(false);
+    }
   };
 
   const closeMobileNav = () => setMobileOpen(false);
@@ -383,6 +446,19 @@ export default function Layout() {
               type="button"
               variant="ghost"
               size="sm"
+              onClick={() => setChangePasswordOpen(true)}
+              className="h-9 w-full rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
+              data-testid="change-password-btn"
+              aria-label="Change password"
+            >
+              <KeyRound size={14} />
+              <span>Password</span>
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={handleFeedbackClick}
               className="h-9 w-full rounded-xl border border-[rgba(245,190,80,0.18)] text-xs font-bold uppercase tracking-wider text-slate-200 hover:border-[rgba(245,190,80,0.38)] hover:bg-[rgba(245,190,80,0.11)] hover:text-white"
               data-testid="feedback-btn"
@@ -404,6 +480,80 @@ export default function Layout() {
               <span>Logout</span>
             </Button>
           </div>
+
+          <Dialog open={changePasswordOpen} onOpenChange={(open) => (open ? setChangePasswordOpen(true) : resetChangePassword())}>
+            <DialogContent className="rounded-2xl border border-[rgba(245,190,80,0.28)] bg-white text-slate-950 shadow-2xl dark:bg-slate-950 dark:text-slate-50 sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="font-['Barlow_Condensed'] text-xl font-black uppercase tracking-wide">
+                  Change Password
+                </DialogTitle>
+              </DialogHeader>
+
+              <form className="space-y-4" onSubmit={handleChangePasswordSubmit}>
+                <div>
+                  <Label className="text-xs font-black uppercase tracking-wider">Current Password</Label>
+                  <Input
+                    data-testid="change-password-current"
+                    type="password"
+                    autoComplete="current-password"
+                    className="mt-1 rounded-xl border border-slate-300 bg-white text-slate-950 dark:border-white/20 dark:bg-slate-900 dark:text-slate-50"
+                    value={changePasswordData.current_password}
+                    onChange={(event) => updateChangePasswordField("current_password", event.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-black uppercase tracking-wider">New Password</Label>
+                  <Input
+                    data-testid="change-password-new"
+                    type="password"
+                    autoComplete="new-password"
+                    className="mt-1 rounded-xl border border-slate-300 bg-white text-slate-950 dark:border-white/20 dark:bg-slate-900 dark:text-slate-50"
+                    value={changePasswordData.new_password}
+                    onChange={(event) => updateChangePasswordField("new_password", event.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-xs font-black uppercase tracking-wider">Confirm New Password</Label>
+                  <Input
+                    data-testid="change-password-confirm"
+                    type="password"
+                    autoComplete="new-password"
+                    className="mt-1 rounded-xl border border-slate-300 bg-white text-slate-950 dark:border-white/20 dark:bg-slate-900 dark:text-slate-50"
+                    value={changePasswordData.confirm_password}
+                    onChange={(event) => updateChangePasswordField("confirm_password", event.target.value)}
+                  />
+                </div>
+
+                {changePasswordError && (
+                  <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-600 dark:text-rose-300" data-testid="change-password-error">
+                    {changePasswordError}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetChangePassword}
+                    className="h-10 rounded-xl border border-slate-300 bg-white text-xs font-bold uppercase tracking-wider text-slate-800 hover:bg-slate-50 dark:border-white/20 dark:bg-transparent dark:text-slate-100 dark:hover:bg-white/5"
+                    data-testid="change-password-cancel"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={changePasswordBusy}
+                    className="h-10 rounded-xl bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+                    data-testid="change-password-submit"
+                  >
+                    {changePasswordBusy ? "Saving..." : "Save Password"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
@@ -471,6 +621,18 @@ export default function Layout() {
               title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setChangePasswordOpen(true)}
+              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
+              data-testid="mobile-change-password-btn"
+              aria-label="Change password"
+            >
+              <KeyRound size={16} />
+              <span>Password</span>
             </Button>
 
             <Button
@@ -562,5 +724,3 @@ export default function Layout() {
     </div>
   );
 }
-
-
