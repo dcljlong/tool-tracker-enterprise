@@ -772,23 +772,23 @@ async def test_email(current_user: dict = Depends(auth_dependency)):
 # --- Dashboard Stats ---
 @api_router.get("/dashboard/stats")
 async def dashboard_stats(current_user: dict = Depends(auth_dependency)):
-    total = await db.tools.count_documents({})
-    available = await db.tools.count_documents({"status": "available"})
-    checked_out = await db.tools.count_documents({"status": "checked_out"})
-    maintenance = await db.tools.count_documents({"status": "maintenance_required"})
+    total = await db.tools.count_documents(company_filter(current_user))
+    available = await db.tools.count_documents(company_filter(current_user, {"status": "available"}))
+    checked_out = await db.tools.count_documents(company_filter(current_user, {"status": "checked_out"}))
+    maintenance = await db.tools.count_documents(company_filter(current_user, {"status": "maintenance_required"}))
     # Overdue tools
     now = datetime.now(timezone.utc).isoformat()
     overdue_checkouts = await db.checkouts.find(
-        {"status": "active", "expected_return_date": {"$lt": now}}, {"_id": 0}
+        company_filter(current_user, {"status": "active", "expected_return_date": {"$lt": now}}), {"_id": 0}
     ).to_list(500)
     overdue_count = len(overdue_checkouts)
     # Expiring safety tags (within 14 days)
     two_weeks = (datetime.now(timezone.utc) + timedelta(days=14)).isoformat()
-    expiring_tags = await db.tools.count_documents({
+    expiring_tags = await db.tools.count_documents(company_filter(current_user, {
         "safety_tag_expiry": {"$ne": None, "$lte": two_weeks, "$gte": now}
-    })
+    }))
     # Users
-    user_count = await db.users.count_documents({"is_active": True})
+    user_count = await db.users.count_documents(company_filter(current_user, {"is_active": True}))
     return {
         "total_tools": total,
         "available": available,
@@ -802,13 +802,16 @@ async def dashboard_stats(current_user: dict = Depends(auth_dependency)):
 
 @api_router.get("/dashboard/recent-activity")
 async def recent_activity(current_user: dict = Depends(auth_dependency)):
-    audits = await db.audit_log.find({}, {"_id": 0}).sort("timestamp", -1).to_list(20)
+    audits = await db.audit_log.find(company_filter(current_user), {"_id": 0}).sort("timestamp", -1).to_list(20)
     return audits
 
 # --- Audit Log ---
 async def log_audit(tool_id: str, action: str, user_id: str, user_name: str, details: str):
+    audit_user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0}) if user_id else None
     doc = {
         "id": str(uuid.uuid4()),
+        "company_id": normalise_company_id((audit_user or {}).get("company_id")),
+        "company_name": (audit_user or {}).get("company_name") or DEFAULT_COMPANY_NAME,
         "tool_id": tool_id,
         "action": action,
         "user_id": user_id,
@@ -820,7 +823,7 @@ async def log_audit(tool_id: str, action: str, user_id: str, user_name: str, det
 
 @api_router.get("/audit/{tool_id}")
 async def get_audit_trail(tool_id: str, current_user: dict = Depends(auth_dependency)):
-    audits = await db.audit_log.find({"tool_id": tool_id}, {"_id": 0}).sort("timestamp", -1).to_list(200)
+    audits = await db.audit_log.find(company_filter(current_user, {"tool_id": tool_id}), {"_id": 0}).sort("timestamp", -1).to_list(200)
     return audits
 
 # --- Import ---
@@ -1217,25 +1220,32 @@ class CategoryUpdate(BaseModel):
 
 @api_router.get("/categories")
 async def get_categories(current_user: dict = Depends(auth_dependency)):
-    cats = await db.categories.find({}, {"_id": 0}).to_list(200)
+    cats = await db.categories.find(company_filter(current_user), {"_id": 0}).to_list(200)
     if not cats:
         # Fallback: return distinct categories from tools
-        tool_cats = await db.tools.distinct("category")
+        tool_cats = await db.tools.distinct("category", company_filter(current_user))
         return [{"id": str(uuid.uuid4()), "name": c, "description": "", "tool_count": 0} for c in tool_cats]
     # Enrich with tool counts
     for cat in cats:
-        cat["tool_count"] = await db.tools.count_documents({"category": cat["name"]})
+        cat["tool_count"] = await db.tools.count_documents(company_filter(current_user, {"category": cat["name"]}))
     return cats
 
 @api_router.post("/categories")
 async def create_category(data: CategoryCreate, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    existing = await db.categories.find_one({"name": {"$regex": f"^{data.name}$", "$options": "i"}})
+    existing = await db.categories.find_one(company_filter(current_user, {"name": {"$regex": f"^{data.name}$", "$options": "i"}}))
     if existing:
         raise HTTPException(status_code=400, detail="Category already exists")
     cat_id = str(uuid.uuid4())
-    doc = {"id": cat_id, "name": data.name, "description": data.description or "", "created_at": datetime.now(timezone.utc).isoformat()}
+    doc = {
+        "id": cat_id,
+        "name": data.name,
+        "description": data.description or "",
+        "company_id": current_company_id(current_user),
+        "company_name": current_user.get("company_name") or DEFAULT_COMPANY_NAME,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
     await db.categories.insert_one(doc)
     return {"id": cat_id, "name": data.name, "description": data.description or "", "tool_count": 0}
 
@@ -1243,30 +1253,32 @@ async def create_category(data: CategoryCreate, current_user: dict = Depends(aut
 async def update_category(cat_id: str, data: CategoryUpdate, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    old_cat = await db.categories.find_one({"id": cat_id}, {"_id": 0})
+    old_cat = await db.categories.find_one(company_filter(current_user, {"id": cat_id}), {"_id": 0})
+    if not old_cat:
+        raise HTTPException(status_code=404, detail="Category not found")
     update_dict = {k: v for k, v in data.model_dump().items() if v is not None}
     if not update_dict:
         raise HTTPException(status_code=400, detail="No fields to update")
-    await db.categories.update_one({"id": cat_id}, {"$set": update_dict})
+    await db.categories.update_one(company_filter(current_user, {"id": cat_id}), {"$set": update_dict})
     # If name changed, update all tools with old category name
     if "name" in update_dict and old_cat:
-        await db.tools.update_many({"category": old_cat["name"]}, {"$set": {"category": update_dict["name"]}})
-    cat = await db.categories.find_one({"id": cat_id}, {"_id": 0})
+        await db.tools.update_many(company_filter(current_user, {"category": old_cat["name"]}), {"$set": {"category": update_dict["name"]}})
+    cat = await db.categories.find_one(company_filter(current_user, {"id": cat_id}), {"_id": 0})
     if cat:
-        cat["tool_count"] = await db.tools.count_documents({"category": cat["name"]})
+        cat["tool_count"] = await db.tools.count_documents(company_filter(current_user, {"category": cat["name"]}))
     return cat
 
 @api_router.delete("/categories/{cat_id}")
 async def delete_category(cat_id: str, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin only")
-    cat = await db.categories.find_one({"id": cat_id}, {"_id": 0})
+    cat = await db.categories.find_one(company_filter(current_user, {"id": cat_id}), {"_id": 0})
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
-    tool_count = await db.tools.count_documents({"category": cat["name"]})
+    tool_count = await db.tools.count_documents(company_filter(current_user, {"category": cat["name"]}))
     if tool_count > 0:
         raise HTTPException(status_code=400, detail=f"Cannot delete: {tool_count} tools use this category. Reassign them first.")
-    await db.categories.delete_one({"id": cat_id})
+    await db.categories.delete_one(company_filter(current_user, {"id": cat_id}))
     return {"status": "deleted"}
 
 # --- Compliance Certificates ---
@@ -1691,10 +1703,13 @@ async def startup_tasks():
     await db.tools.create_index("asset_id", unique=True)
     await db.tools.create_index("status")
     await db.tools.create_index("company_id")
-    await db.tools.update_many(
-        {"company_id": {"$exists": False}},
-        {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
-    )
+    await db.categories.create_index("company_id")
+    await db.audit_log.create_index("company_id")
+    for collection_name in ["tools", "categories", "audit_log"]:
+        await db[collection_name].update_many(
+            {"company_id": {"$exists": False}},
+            {"$set": {"company_id": DEFAULT_COMPANY_ID, "company_name": DEFAULT_COMPANY_NAME}}
+        )
     await db.checkouts.create_index("tool_id")
     await db.checkouts.create_index("status")
     await db.notifications.create_index("user_id")
