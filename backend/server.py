@@ -166,6 +166,21 @@ class WorkspaceAccessUpdate(BaseModel):
     billing_owner_email: Optional[str] = None
     internal_notes: Optional[str] = None
 
+class OperatorWorkspaceProvisionRequest(BaseModel):
+    company_id: str
+    company_name: str
+    admin_email: str
+    admin_name: str
+    admin_password: str
+    access_type: str = "demo"
+    access_status: str = "active"
+    access_expires_at: Optional[str] = None
+    apps_enabled: Optional[List[str]] = None
+    payment_status: str = "manual_review"
+    billing_owner: Optional[str] = None
+    billing_owner_email: Optional[str] = None
+    internal_notes: Optional[str] = None
+
 class MaintenanceAction(BaseModel):
     tool_id: str
     action_type: str
@@ -235,6 +250,10 @@ def normalise_company_id(value: Optional[str]) -> str:
 
 def current_company_id(current_user: Dict[str, Any]) -> str:
     return normalise_company_id(current_user.get("company_id"))
+
+def current_company_name(current_user: Dict[str, Any]) -> str:
+    clean = str(current_user.get("company_name") or "").strip()
+    return clean or DEFAULT_COMPANY_NAME
 
 def company_filter(current_user: Dict[str, Any], extra: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     query = {"company_id": current_company_id(current_user)}
@@ -1364,6 +1383,138 @@ async def update_operator_workspace_access(
             "billing_owner": settings.get("billing_owner") or None,
             "billing_owner_email": settings.get("billing_owner_email") or None,
         },
+    }
+
+@api_router.post("/operator/workspaces/provision")
+async def provision_operator_workspace(
+    data: OperatorWorkspaceProvisionRequest,
+    operator_context: dict = Depends(operator_dependency)
+):
+    raw_company_id = clean_optional_string(data.company_id)
+    if not raw_company_id:
+        raise HTTPException(status_code=400, detail="company_id is required")
+
+    clean_company_id = normalise_company_id(raw_company_id)
+    if clean_company_id == DEFAULT_COMPANY_ID:
+        raise HTTPException(status_code=400, detail="Refusing to provision the default workspace through operator provisioning")
+
+    clean_company_name = clean_optional_string(data.company_name)
+    if not clean_company_name:
+        raise HTTPException(status_code=400, detail="company_name is required")
+
+    admin_email = clean_optional_string(data.admin_email)
+    if not admin_email or "@" not in admin_email:
+        raise HTTPException(status_code=400, detail="Valid admin_email is required")
+    admin_email = admin_email.lower()
+
+    admin_name = clean_optional_string(data.admin_name)
+    if not admin_name:
+        raise HTTPException(status_code=400, detail="admin_name is required")
+
+    if len(data.admin_password or "") < 8:
+        raise HTTPException(status_code=400, detail="admin_password must be at least 8 characters")
+
+    settings_query = {"id": "app_settings", "company_id": clean_company_id}
+    existing_settings = await db.settings.find_one(settings_query, {"_id": 0})
+    existing_workspace_users = await db.users.count_documents({"company_id": clean_company_id})
+    if existing_settings or existing_workspace_users:
+        raise HTTPException(status_code=400, detail="Workspace already exists")
+
+    existing_email = await db.users.find_one({"email": admin_email}, {"_id": 0})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Admin email is already registered")
+
+    access_payload = WorkspaceAccessUpdate(
+        company_name=clean_company_name,
+        access_type=data.access_type,
+        access_status=data.access_status,
+        access_expires_at=data.access_expires_at,
+        apps_enabled=data.apps_enabled or [TOOL_TRACKER_APP_ID],
+        payment_status=data.payment_status,
+        billing_owner=data.billing_owner,
+        billing_owner_email=data.billing_owner_email,
+        internal_notes=data.internal_notes,
+    )
+    commercial_update = build_operator_workspace_access_update(access_payload)
+
+    now = datetime.now(timezone.utc).isoformat()
+    settings_doc = {
+        "id": "app_settings",
+        "company_id": clean_company_id,
+        "company_name": clean_company_name,
+        "email_provider": "",
+        "email_api_key": "",
+        "sender_email": "",
+        "notify_tag_expiry": True,
+        "notify_overdue": True,
+        "notify_handover": True,
+        "notify_days_before": 14,
+        "operator_provisioned_at": now,
+        "operator_updated_at": now,
+        "updated_at": now,
+    }
+    settings_doc.update(commercial_update)
+    settings_doc["company_name"] = clean_company_name
+
+    user_id = str(uuid.uuid4())
+    admin_doc = {
+        "id": user_id,
+        "email": admin_email,
+        "password": hash_password(data.admin_password),
+        "name": admin_name,
+        "role": "admin",
+        "company_id": clean_company_id,
+        "company_name": clean_company_name,
+        "created_at": now,
+        "operator_provisioned_at": now,
+        "is_active": True,
+        "force_password_change": True,
+        "email_verified": True,
+        "email_verified_at": now,
+        "password_updated_at": now,
+    }
+
+    await db.settings.insert_one(settings_doc)
+    try:
+        await db.users.insert_one(admin_doc)
+    except Exception:
+        await db.settings.delete_one(settings_query)
+        raise
+
+    settings = await db.settings.find_one(settings_query, {"_id": 0}) or settings_doc
+
+    safe_admin = {
+        "id": admin_doc["id"],
+        "email": admin_doc["email"],
+        "name": admin_doc["name"],
+        "role": admin_doc["role"],
+        "company_id": admin_doc["company_id"],
+        "company_name": admin_doc["company_name"],
+        "is_active": admin_doc["is_active"],
+        "force_password_change": admin_doc["force_password_change"],
+        "email_verified": admin_doc["email_verified"],
+    }
+
+    return {
+        "status": "workspace_provisioned",
+        "company_id": clean_company_id,
+        "company_name": clean_company_name,
+        "admin_user": safe_admin,
+        "workspace_access": build_workspace_access(settings),
+        "commercial_settings": {
+            "access_type": settings.get("access_type") or DEFAULT_WORKSPACE_ACCESS_TYPE,
+            "access_status": settings.get("access_status") or DEFAULT_WORKSPACE_ACCESS_STATUS,
+            "access_expires_at": settings.get("access_expires_at") or None,
+            "apps_enabled": normalise_apps_enabled(settings.get("apps_enabled")),
+            "payment_status": settings.get("payment_status") or "not_applicable",
+            "billing_owner": settings.get("billing_owner") or None,
+            "billing_owner_email": settings.get("billing_owner_email") or None,
+        },
+        "next_steps": [
+            "Store the initial password privately and require the customer admin to change it on first login.",
+            "Record the workspace in the Customer Access Register.",
+            "Verify the customer-visible access banner after first login.",
+        ],
     }
 
 # --- Dashboard Stats ---
