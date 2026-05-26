@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   CheckCircle,
   KeyRound,
+  Mail,
   Pencil,
   RefreshCw,
   Search,
@@ -47,6 +48,12 @@ const EMPTY_NEW_USER = {
   name: "",
   email: "",
   password: "",
+  role: "worker",
+};
+
+const EMPTY_INVITE_USER = {
+  name: "",
+  email: "",
   role: "worker",
 };
 
@@ -170,8 +177,10 @@ export default function UserManagement() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [showAdd, setShowAdd] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [editUser, setEditUser] = useState(null);
 
+  const [inviteUser, setInviteUser] = useState(EMPTY_INVITE_USER);
   const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
   const [editData, setEditData] = useState({ name: "", role: "", email: "" });
   const [resetPasswordUser, setResetPasswordUser] = useState(null);
@@ -239,6 +248,11 @@ export default function UserManagement() {
     setErrors((current) => ({ ...current, [`new_${field}`]: "" }));
   };
 
+  const updateInviteUser = (field, value) => {
+    setInviteUser((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [`invite_${field}`]: "" }));
+  };
+
   const updateEditUser = (field, value) => {
     setEditData((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [`edit_${field}`]: "" }));
@@ -253,6 +267,12 @@ export default function UserManagement() {
     setNewUser(EMPTY_NEW_USER);
     setErrors({});
     setShowAdd(false);
+  };
+
+  const resetInviteDialog = () => {
+    setInviteUser(EMPTY_INVITE_USER);
+    setErrors({});
+    setShowInvite(false);
   };
 
   const closeResetPasswordDialog = () => {
@@ -287,6 +307,21 @@ export default function UserManagement() {
 
     if (!canAdminister && newUser.role !== "worker") {
       nextErrors.new_role = "Site managers can only create worker accounts.";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validateInviteUser = () => {
+    const nextErrors = {};
+
+    if (!normaliseName(inviteUser.name)) nextErrors.invite_name = "Name is required.";
+    if (!inviteUser.email.trim()) nextErrors.invite_email = "Email is required.";
+    else if (!isValidEmail(inviteUser.email)) nextErrors.invite_email = "Enter a valid email address.";
+
+    if (!canAdminister && inviteUser.role !== "worker") {
+      nextErrors.invite_role = "Site managers can only invite worker accounts.";
     }
 
     setErrors(nextErrors);
@@ -337,6 +372,28 @@ export default function UserManagement() {
       fetchUsers();
     } catch (error) {
       toast.error(errorMessage(error, "Failed to create user."));
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleInvite = async () => {
+    if (!validateInviteUser()) return;
+
+    setBusyAction("invite");
+
+    try {
+      await api.post("/users/invite", {
+        name: normaliseName(inviteUser.name),
+        email: normaliseEmail(inviteUser.email),
+        role: inviteUser.role,
+      });
+
+      toast.success("Invite email sent");
+      resetInviteDialog();
+      fetchUsers();
+    } catch (error) {
+      toast.error(errorMessage(error, "Invite failed. Check email settings and sender verification."));
     } finally {
       setBusyAction("");
     }
@@ -456,6 +513,84 @@ export default function UserManagement() {
             <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+
+          {canCreateUsers && (
+            <Dialog open={showInvite} onOpenChange={(open) => (open ? setShowInvite(true) : resetInviteDialog())}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+                  data-testid="invite-user-btn"
+                >
+                  <Mail size={14} className="mr-2" />
+                  Invite User
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="rounded-sm">
+                <DialogHeader>
+                  <DialogTitle className="font-['Barlow_Condensed'] text-xl uppercase">
+                    Invite User
+                  </DialogTitle>
+                </DialogHeader>
+
+                <div className="grid gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Sends a Tool Tracker invite email with a temporary password. The user must set their own password on first login.
+                  </p>
+
+                  <div>
+                    <Label className="text-xs font-black uppercase tracking-wider">Name</Label>
+                    <Input
+                      data-testid="invite-user-name"
+                      className="mt-1 rounded-none border-2"
+                      value={inviteUser.name}
+                      onChange={(event) => updateInviteUser("name", event.target.value)}
+                    />
+                    <FieldError message={errors.invite_name} />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-black uppercase tracking-wider">Email</Label>
+                    <Input
+                      data-testid="invite-user-email"
+                      type="email"
+                      className="mt-1 rounded-none border-2"
+                      value={inviteUser.email}
+                      onChange={(event) => updateInviteUser("email", event.target.value)}
+                    />
+                    <FieldError message={errors.invite_email} />
+                  </div>
+
+                  <div>
+                    <Label className="text-xs font-black uppercase tracking-wider">Role</Label>
+                    <Select value={inviteUser.role} onValueChange={(value) => updateInviteUser("role", value)}>
+                      <SelectTrigger className="mt-1 rounded-none border-2" data-testid="invite-user-role">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableCreateRoles.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FieldError message={errors.invite_role} />
+                  </div>
+
+                  <Button
+                    onClick={handleInvite}
+                    disabled={busyAction === "invite"}
+                    className="h-11 rounded-none bg-[hsl(38,92%,50%)] text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+                    data-testid="confirm-invite-user-btn"
+                  >
+                    {busyAction === "invite" ? "Sending..." : "Send Invite"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {canCreateUsers && (
             <Dialog open={showAdd} onOpenChange={(open) => (open ? setShowAdd(true) : resetAddDialog())}>

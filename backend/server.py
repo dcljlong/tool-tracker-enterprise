@@ -12,6 +12,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
+import secrets
 from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
@@ -59,6 +60,11 @@ class UserCreate(BaseModel):
     role: str = "worker"
     company_id: Optional[str] = None
     company_name: Optional[str] = None
+
+class UserInvite(BaseModel):
+    email: str
+    name: str
+    role: str = "worker"
 
 class UserLogin(BaseModel):
     email: str
@@ -343,6 +349,86 @@ async def list_users(
         ]
     users = await db.users.find(query, {"_id": 0, "password": 0}).to_list(500)
     return users
+
+@api_router.post("/users/invite")
+async def invite_user(user: UserInvite, current_user: dict = Depends(auth_dependency)):
+    if current_user["role"] not in ["admin", "site_manager"]:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if user.role not in ["admin", "site_manager", "worker"]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    if current_user["role"] != "admin" and user.role != "worker":
+        raise HTTPException(status_code=403, detail="Site managers can only invite worker accounts")
+
+    email = user.email.lower().strip()
+    name = user.name.strip()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Valid email is required")
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+
+    existing = await db.users.find_one({"email": email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    settings = await db.settings.find_one(company_filter(current_user, {"id": "app_settings"}), {"_id": 0})
+    if not settings or not settings.get("email_api_key") or not settings.get("sender_email"):
+        raise HTTPException(status_code=400, detail="Email is not configured for this workspace")
+
+    user_id = str(uuid.uuid4())
+    temporary_password = secrets.token_urlsafe(12)
+    target_company_id = current_company_id(current_user)
+    target_company_name = current_user.get("company_name") or DEFAULT_COMPANY_NAME
+    frontend_url = os.environ.get("FRONTEND_URL", "https://tool-tracker-enterprise.vercel.app").rstrip("/")
+
+    doc = {
+        "id": user_id,
+        "email": email,
+        "password": hash_password(temporary_password),
+        "name": name,
+        "role": user.role,
+        "company_id": target_company_id,
+        "company_name": target_company_name,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "invited_at": datetime.now(timezone.utc).isoformat(),
+        "invited_by": current_user["user_id"],
+        "is_active": True,
+        "force_password_change": True,
+        "password_updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.users.insert_one(doc)
+
+    invite_html = f"""
+    <h2>Tool Tracker access invited</h2>
+    <p>You have been invited to Tool Tracker for <strong>{target_company_name}</strong>.</p>
+    <p><strong>Login:</strong> {frontend_url}/login</p>
+    <p><strong>Email:</strong> {email}</p>
+    <p><strong>Temporary password:</strong> {temporary_password}</p>
+    <p>You will be asked to set your own password after signing in.</p>
+    """
+
+    email_sent = await send_notification_email(
+        email,
+        "Tool Tracker access invited",
+        invite_html,
+        company_id=target_company_id,
+        settings=settings,
+    )
+
+    if not email_sent:
+        await db.users.delete_one(company_filter(current_user, {"id": user_id}))
+        raise HTTPException(status_code=400, detail="Invite email failed; user was not created")
+
+    return {
+        "status": "invite_sent",
+        "id": user_id,
+        "email": email,
+        "name": name,
+        "role": user.role,
+        "company_id": target_company_id,
+        "company_name": target_company_name,
+        "force_password_change": True,
+    }
 
 @api_router.post("/users")
 async def create_user(user: UserCreate, current_user: dict = Depends(auth_dependency)):
