@@ -165,6 +165,120 @@ function canSeeItem(item, userRole) {
   return item.roles.includes(userRole);
 }
 
+function formatAccessText(value, fallback = "Not set") {
+  if (!value) return fallback;
+  return String(value)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatAccessExpiry(value) {
+  if (!value) return "No expiry";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Expiry not readable";
+
+  return date.toLocaleDateString("en-NZ", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function getAccessBannerConfig(access = {}) {
+  const accessType = String(access.access_type || "internal").toLowerCase();
+  const accessStatus = String(access.access_status || "active").toLowerCase();
+  const blocked = Boolean(access.access_blocked) || ["suspended", "expired", "cancelled"].includes(accessStatus);
+
+  if (blocked) {
+    return {
+      toneClass: "border-rose-500/35 bg-rose-500/10 text-rose-950 dark:text-rose-100",
+      badgeClass: "border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-300",
+      title: "Workspace access needs attention",
+      message: access.access_block_reason || `Workspace access is ${formatAccessText(accessStatus).toLowerCase()}.`,
+    };
+  }
+
+  if (accessType === "trial" || accessType === "demo") {
+    return {
+      toneClass: "border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100",
+      badgeClass: "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+      title: `${formatAccessText(accessType)} access active`,
+      message: "Access is managed by Long Line Suite support.",
+    };
+  }
+
+  if (accessType === "paid") {
+    return {
+      toneClass: "border-emerald-500/35 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100",
+      badgeClass: "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+      title: "Paid access active",
+      message: "Access is managed by Long Line Suite support.",
+    };
+  }
+
+  return {
+    toneClass: "border-[rgba(245,190,80,0.28)] bg-[rgba(245,190,80,0.08)] text-slate-950 dark:text-slate-100",
+    badgeClass: "border-[rgba(245,190,80,0.32)] bg-[rgba(245,190,80,0.14)] text-[hsl(38,92%,34%)] dark:text-[hsl(38,92%,62%)]",
+    title: "Internal access active",
+    message: "Access is managed by Long Line Suite support.",
+  };
+}
+
+function AccessStatusBanner({ access }) {
+  const safeAccess = access || {};
+  const config = getAccessBannerConfig(safeAccess);
+  const accessType = formatAccessText(safeAccess.access_type || "internal");
+  const accessStatus = formatAccessText(safeAccess.access_status || "active");
+  const expiry = formatAccessExpiry(safeAccess.access_expires_at);
+
+  return (
+    <section
+      className={`mb-5 rounded-2xl border px-4 py-3 shadow-sm ${config.toneClass}`}
+      data-testid="workspace-access-banner"
+      aria-label="Workspace access status"
+    >
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] opacity-75">
+            Workspace access
+          </p>
+          <p className="mt-1 text-sm font-bold" data-testid="workspace-access-message">
+            {config.title}
+          </p>
+          <p className="mt-0.5 text-xs opacity-80">
+            {config.message}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Badge
+            variant="outline"
+            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${config.badgeClass}`}
+            data-testid="workspace-access-type"
+          >
+            Type: {accessType}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${config.badgeClass}`}
+            data-testid="workspace-access-status"
+          >
+            Status: {accessStatus}
+          </Badge>
+          <Badge
+            variant="outline"
+            className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${config.badgeClass}`}
+            data-testid="workspace-access-expiry"
+          >
+            {expiry}
+          </Badge>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function NavItem({ item, badge, onClick }) {
   const Icon = item.icon;
 
@@ -249,6 +363,7 @@ export default function Layout() {
   const displayName = getDisplayName(user);
   const roleLabel = formatRole(user?.role);
   const currentPageTitle = getCurrentPageTitle(location.pathname);
+  const workspaceAccess = user?.workspace_access || {};
 
   const visibleNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => canSeeItem(item, user?.role)),
@@ -716,7 +831,8 @@ export default function Layout() {
         <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.14),transparent_30%),linear-gradient(180deg,#f8f5ee_0%,#f3efe4_100%)] pt-[7.6rem] dark:bg-[radial-gradient(circle_at_top_right,rgba(245,190,80,0.10),transparent_34%),linear-gradient(180deg,#07111f_0%,#020617_100%)] lg:pt-0">
           <div className="w-full px-4 py-5 sm:px-5 lg:px-7 lg:py-6">
             <div className="page-enter">
-              <Outlet />
+              <AccessStatusBanner access={workspaceAccess} />
+          <Outlet />
             </div>
           </div>
         </main>
