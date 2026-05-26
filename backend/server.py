@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import uuid
 import secrets
+import hashlib
 from datetime import datetime, timezone, timedelta
 import jwt
 import bcrypt
@@ -65,6 +66,13 @@ class UserInvite(BaseModel):
     email: str
     name: str
     role: str = "worker"
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
 
 class UserLogin(BaseModel):
     email: str
@@ -285,6 +293,111 @@ async def setup_admin(user: UserCreate):
     })
     token = create_token(user_id, "admin", user.name)
     return {"token": token, "user": {"id": user_id, "email": doc["email"], "name": user.name, "role": "admin"}}
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(data: ForgotPasswordRequest):
+    generic_response = {"status": "reset_email_sent_if_configured"}
+    email = data.email.lower().strip()
+
+    if not email or "@" not in email:
+        return generic_response
+
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if not user or not user.get("is_active", True):
+        return generic_response
+
+    company_id = normalise_company_id(user.get("company_id"))
+    settings = await db.settings.find_one({"id": "app_settings", "company_id": company_id}, {"_id": 0})
+    if not settings or not settings.get("email_api_key") or not settings.get("sender_email"):
+        return generic_response
+
+    now = datetime.now(timezone.utc)
+    reset_token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(reset_token.encode("utf-8")).hexdigest()
+    frontend_url = os.environ.get("FRONTEND_URL", "https://tool-tracker-enterprise.vercel.app").rstrip("/")
+    reset_url = f"{frontend_url}/reset-password?token={reset_token}"
+
+    await db.password_reset_tokens.delete_many({
+        "user_id": user["id"],
+        "company_id": company_id,
+        "used_at": {"$exists": False},
+    })
+
+    await db.password_reset_tokens.insert_one({
+        "id": str(uuid.uuid4()),
+        "token_hash": token_hash,
+        "user_id": user["id"],
+        "email": email,
+        "company_id": company_id,
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(hours=1)).isoformat(),
+        "requested_ip": None,
+    })
+
+    reset_html = f"""
+    <h2>Tool Tracker password reset</h2>
+    <p>A password reset was requested for your Tool Tracker account.</p>
+    <p><a href="{reset_url}">Reset your password</a></p>
+    <p>This link expires in 1 hour. If you did not request this, ignore this email.</p>
+    """
+
+    email_sent = await send_notification_email(
+        email,
+        "Tool Tracker password reset",
+        reset_html,
+        company_id=company_id,
+        settings=settings,
+    )
+
+    if not email_sent:
+        await db.password_reset_tokens.delete_one({"token_hash": token_hash, "company_id": company_id})
+
+    return generic_response
+
+@api_router.post("/auth/reset-password")
+async def reset_password(data: PasswordResetConfirm):
+    if len(data.new_password or "") < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    token_hash = hashlib.sha256((data.token or "").encode("utf-8")).hexdigest()
+    token_doc = await db.password_reset_tokens.find_one({"token_hash": token_hash}, {"_id": 0})
+
+    if not token_doc or token_doc.get("used_at"):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    try:
+        expires_at = datetime.fromisoformat(token_doc["expires_at"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    company_id = normalise_company_id(token_doc.get("company_id"))
+    user_query = {
+        "id": token_doc["user_id"],
+        "company_id": company_id,
+        "email": token_doc["email"],
+    }
+    user = await db.users.find_one(user_query, {"_id": 0})
+    if not user or not user.get("is_active", True):
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(user_query, {
+        "$set": {
+            "password": hash_password(data.new_password),
+            "password_updated_at": now.isoformat(),
+            "force_password_change": False,
+        },
+        "$unset": {"password_reset_by": ""},
+    })
+    await db.password_reset_tokens.update_one(
+        {"token_hash": token_hash, "company_id": company_id},
+        {"$set": {"used_at": now.isoformat()}},
+    )
+
+    return {"status": "password_reset"}
 
 @api_router.post("/auth/login")
 async def login(user: UserLogin):

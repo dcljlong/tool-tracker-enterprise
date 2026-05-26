@@ -1,5 +1,5 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,6 +22,142 @@ import Reports from "@/pages/Reports";
 import Categories from "@/pages/Categories";
 import CalendarPage from "@/pages/CalendarPage";
 import QRScannerPage from "@/pages/QRScannerPage";
+
+function ResetPassword() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token") || "";
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleBackToLogin = () => {
+    window.location.href = "/login";
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setErrorMessage("");
+
+    if (!token) {
+      setErrorMessage("Reset link is missing or invalid.");
+      return;
+    }
+
+    if ((newPassword || "").length < 6) {
+      setErrorMessage("New password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMessage("New password and confirmation do not match.");
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await api.post("/auth/reset-password", {
+        token,
+        new_password: newPassword,
+      });
+      toast.success("Password reset. Sign in with your new password.");
+      window.location.href = "/login";
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.detail || "Password reset failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[linear-gradient(135deg,#050916,#07111f_48%,#020617)] px-4 py-8 text-slate-100">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg items-center justify-center">
+        <section className="w-full rounded-2xl border border-[rgba(245,190,80,0.30)] bg-slate-950/92 p-6 shadow-2xl" data-testid="reset-password-page">
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.24em] text-[hsl(38,92%,58%)]">
+              Tool Tracker Security
+            </p>
+            <h1 className="mt-2 font-['Barlow_Condensed'] text-3xl font-black uppercase tracking-wide text-white">
+              Reset Password
+            </h1>
+            <p className="mt-2 text-sm text-slate-300">
+              Enter a new password for your Tool Tracker account.
+            </p>
+          </div>
+
+          {!token && (
+            <p className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200" data-testid="reset-password-token-missing">
+              Reset link is missing or invalid. Request a new link from the login screen.
+            </p>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div>
+              <Label className="text-xs font-black uppercase tracking-wider text-slate-200">
+                New Password
+              </Label>
+              <Input
+                data-testid="reset-password-new"
+                type="password"
+                autoComplete="new-password"
+                className="mt-1 rounded-xl border border-white/20 bg-slate-900 text-slate-50"
+                value={newPassword}
+                onChange={(event) => {
+                  setNewPassword(event.target.value);
+                  setErrorMessage("");
+                }}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs font-black uppercase tracking-wider text-slate-200">
+                Confirm New Password
+              </Label>
+              <Input
+                data-testid="reset-password-confirm"
+                type="password"
+                autoComplete="new-password"
+                className="mt-1 rounded-xl border border-white/20 bg-slate-900 text-slate-50"
+                value={confirmPassword}
+                onChange={(event) => {
+                  setConfirmPassword(event.target.value);
+                  setErrorMessage("");
+                }}
+              />
+            </div>
+
+            {errorMessage && (
+              <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200" data-testid="reset-password-error">
+                {errorMessage}
+              </p>
+            )}
+
+            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleBackToLogin}
+                className="h-10 rounded-xl border border-white/20 bg-transparent text-xs font-bold uppercase tracking-wider text-slate-100 hover:bg-white/5"
+                data-testid="reset-password-back-to-login"
+              >
+                Back to Login
+              </Button>
+              <Button
+                type="submit"
+                disabled={saving || !token}
+                className="h-10 rounded-xl bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+                data-testid="reset-password-submit"
+              >
+                {saving ? "Saving..." : "Save Password"}
+              </Button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </div>
+  );
+}
 
 function ForcePasswordChange() {
   const { logout } = useAuth();
@@ -222,6 +358,11 @@ function AppRoutes() {
             <Navigate to="/" replace />
           )
         }
+      />
+
+      <Route
+        path="/reset-password"
+        element={user ? <Navigate to="/" replace /> : <ResetPassword />}
       />
 
       <Route
