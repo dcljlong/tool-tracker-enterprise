@@ -46,6 +46,9 @@ UPLOADS_DIR.mkdir(exist_ok=True)
 
 DEFAULT_COMPANY_ID = os.environ.get("DEFAULT_COMPANY_ID", "default-company").strip() or "default-company"
 DEFAULT_COMPANY_NAME = os.environ.get("DEFAULT_COMPANY_NAME", "Default Workspace").strip() or "Default Workspace"
+TOOL_TRACKER_APP_ID = "tool_tracker"
+DEFAULT_WORKSPACE_ACCESS_TYPE = os.environ.get("DEFAULT_WORKSPACE_ACCESS_TYPE", "internal").strip().lower() or "internal"
+DEFAULT_WORKSPACE_ACCESS_STATUS = os.environ.get("DEFAULT_WORKSPACE_ACCESS_STATUS", "active").strip().lower() or "active"
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -224,6 +227,85 @@ def company_filter(current_user: Dict[str, Any], extra: Optional[Dict[str, Any]]
         query.update(extra)
     return query
 
+def parse_workspace_access_expiry(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+
+    clean = str(value).strip()
+    if not clean:
+        return None
+
+    if clean.endswith("Z"):
+        clean = clean[:-1] + "+00:00"
+
+    parsed = datetime.fromisoformat(clean)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+
+    return parsed.astimezone(timezone.utc)
+
+def normalise_apps_enabled(value: Any) -> List[str]:
+    if isinstance(value, list):
+        apps = [str(item).strip() for item in value if str(item).strip()]
+    elif isinstance(value, str) and value.strip():
+        apps = [item.strip() for item in value.split(",") if item.strip()]
+    else:
+        apps = []
+
+    return apps or [TOOL_TRACKER_APP_ID]
+
+def workspace_access_block_reason(access: Dict[str, Any]) -> Optional[str]:
+    apps_enabled = normalise_apps_enabled(access.get("apps_enabled"))
+    if TOOL_TRACKER_APP_ID not in apps_enabled:
+        return "Tool Tracker access is not enabled for this workspace"
+
+    access_status = str(access.get("access_status") or DEFAULT_WORKSPACE_ACCESS_STATUS).strip().lower()
+    if access_status != "active":
+        return f"Workspace access is {access_status}"
+
+    expires_at = access.get("access_expires_at")
+    if expires_at:
+        try:
+            parsed_expiry = parse_workspace_access_expiry(expires_at)
+        except Exception:
+            return "Workspace access expiry is invalid"
+
+        if parsed_expiry and parsed_expiry < datetime.now(timezone.utc):
+            return "Workspace access has expired"
+
+    return None
+
+def build_workspace_access(settings: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    settings = settings or {}
+
+    access = {
+        "access_type": str(settings.get("access_type") or DEFAULT_WORKSPACE_ACCESS_TYPE).strip().lower(),
+        "access_status": str(settings.get("access_status") or DEFAULT_WORKSPACE_ACCESS_STATUS).strip().lower(),
+        "access_expires_at": settings.get("access_expires_at") or None,
+        "apps_enabled": normalise_apps_enabled(settings.get("apps_enabled")),
+        "payment_status": str(settings.get("payment_status") or "not_applicable").strip().lower(),
+    }
+
+    block_reason = workspace_access_block_reason(access)
+    access["access_blocked"] = bool(block_reason)
+    access["access_block_reason"] = block_reason or ""
+
+    return access
+
+async def get_workspace_access_for_company(company_id: Optional[str]) -> Dict[str, Any]:
+    clean_company_id = normalise_company_id(company_id)
+    settings = await db.settings.find_one({"id": "app_settings", "company_id": clean_company_id}, {"_id": 0})
+    return build_workspace_access(settings)
+
+def enforce_workspace_access(access: Dict[str, Any], request_path: str) -> None:
+    # Keep profile/password routes available so users can still authenticate and resolve account/security prompts.
+    if request_path in {"/api/auth/me", "/api/auth/change-password"}:
+        return
+
+    block_reason = workspace_access_block_reason(access)
+    if block_reason:
+        raise HTTPException(status_code=403, detail=block_reason)
+
 async def get_current_user(token: str = None):
     if not token:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -239,9 +321,11 @@ async def get_current_user(token: str = None):
                 user["company_name"] = user.get("company_name") or DEFAULT_COMPANY_NAME
                 user["force_password_change"] = bool(user.get("force_password_change", False))
                 user["email_verified"] = bool(user.get("email_verified", False))
+                user["workspace_access"] = await get_workspace_access_for_company(user["company_id"])
                 return user
         payload["company_id"] = normalise_company_id(payload.get("company_id"))
         payload["company_name"] = payload.get("company_name") or DEFAULT_COMPANY_NAME
+        payload["workspace_access"] = await get_workspace_access_for_company(payload["company_id"])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -254,7 +338,11 @@ async def auth_dependency(request: Request):
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
-    return await get_current_user(auth_header)
+
+    current_user = await get_current_user(auth_header)
+    current_user["workspace_access"] = current_user.get("workspace_access") or await get_workspace_access_for_company(current_user.get("company_id"))
+    enforce_workspace_access(current_user["workspace_access"], request.url.path)
+    return current_user
 
 # --- First Run Check ---
 @api_router.get("/setup/check")
@@ -467,8 +555,9 @@ async def login(user: UserLogin):
     found["company_name"] = found.get("company_name") or DEFAULT_COMPANY_NAME
     found["force_password_change"] = bool(found.get("force_password_change", False))
     found["email_verified"] = bool(found.get("email_verified", False))
+    found["workspace_access"] = await get_workspace_access_for_company(found["company_id"])
     token = create_token(found["id"], found["role"], found["name"])
-    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"], "force_password_change": found["force_password_change"], "email_verified": found["email_verified"]}}
+    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"], "force_password_change": found["force_password_change"], "email_verified": found["email_verified"], "workspace_access": found["workspace_access"]}}
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(auth_dependency)):
@@ -477,6 +566,7 @@ async def get_me(current_user: dict = Depends(auth_dependency)):
         raise HTTPException(status_code=404, detail="User not found")
     user["force_password_change"] = bool(user.get("force_password_change", False))
     user["email_verified"] = bool(user.get("email_verified", False))
+    user["workspace_access"] = await get_workspace_access_for_company(user.get("company_id"))
     return user
 
 @api_router.post("/auth/change-password")
