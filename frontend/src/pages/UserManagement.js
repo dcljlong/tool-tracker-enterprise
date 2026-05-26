@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CheckCircle,
+  KeyRound,
   Pencil,
   RefreshCw,
   Search,
@@ -47,6 +48,11 @@ const EMPTY_NEW_USER = {
   email: "",
   password: "",
   role: "worker",
+};
+
+const EMPTY_RESET_PASSWORD = {
+  new_password: "",
+  confirm_password: "",
 };
 
 function isValidEmail(value) {
@@ -168,6 +174,8 @@ export default function UserManagement() {
 
   const [newUser, setNewUser] = useState(EMPTY_NEW_USER);
   const [editData, setEditData] = useState({ name: "", role: "", email: "" });
+  const [resetPasswordUser, setResetPasswordUser] = useState(null);
+  const [resetPasswordData, setResetPasswordData] = useState(EMPTY_RESET_PASSWORD);
 
   const [busyAction, setBusyAction] = useState("");
   const [errors, setErrors] = useState({});
@@ -236,10 +244,27 @@ export default function UserManagement() {
     setErrors((current) => ({ ...current, [`edit_${field}`]: "" }));
   };
 
+  const updateResetPassword = (field, value) => {
+    setResetPasswordData((current) => ({ ...current, [field]: value }));
+    setErrors((current) => ({ ...current, [`reset_${field}`]: "" }));
+  };
+
   const resetAddDialog = () => {
     setNewUser(EMPTY_NEW_USER);
     setErrors({});
     setShowAdd(false);
+  };
+
+  const closeResetPasswordDialog = () => {
+    setResetPasswordUser(null);
+    setResetPasswordData(EMPTY_RESET_PASSWORD);
+    setErrors({});
+  };
+
+  const openResetPasswordDialog = (targetUser) => {
+    setResetPasswordUser(targetUser);
+    setResetPasswordData(EMPTY_RESET_PASSWORD);
+    setErrors({});
   };
 
   const openEditDialog = (targetUser) => {
@@ -274,6 +299,21 @@ export default function UserManagement() {
     if (!normaliseName(editData.name)) nextErrors.edit_name = "Name is required.";
     if (!editData.email.trim()) nextErrors.edit_email = "Email is required.";
     else if (!isValidEmail(editData.email)) nextErrors.edit_email = "Enter a valid email address.";
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const validateResetPassword = () => {
+    const nextErrors = {};
+
+    if ((resetPasswordData.new_password || "").length < 6) {
+      nextErrors.reset_new_password = "Password must be at least 6 characters.";
+    }
+
+    if (resetPasswordData.new_password !== resetPasswordData.confirm_password) {
+      nextErrors.reset_confirm_password = "Passwords do not match.";
+    }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -357,6 +397,25 @@ export default function UserManagement() {
       fetchUsers();
     } catch (error) {
       toast.error(errorMessage(error, "Failed to deactivate user."));
+    } finally {
+      setBusyAction("");
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser?.id) return;
+    if (!validateResetPassword()) return;
+
+    setBusyAction(`reset-password-${resetPasswordUser.id}`);
+
+    try {
+      await api.post(`/users/${resetPasswordUser.id}/reset-password`, {
+        new_password: resetPasswordData.new_password,
+      });
+      toast.success(`Password reset for ${resetPasswordUser.name || resetPasswordUser.email}`);
+      closeResetPasswordDialog();
+    } catch (error) {
+      toast.error(errorMessage(error, "Password reset failed."));
     } finally {
       setBusyAction("");
     }
@@ -607,6 +666,65 @@ export default function UserManagement() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={Boolean(resetPasswordUser)} onOpenChange={(open) => { if (!open) closeResetPasswordDialog(); }}>
+        <DialogContent className="rounded-sm">
+          <DialogHeader>
+            <DialogTitle className="font-['Barlow_Condensed'] text-xl uppercase">
+              Reset Password
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="grid gap-3">
+            <p className="text-sm text-muted-foreground">
+              Set a new temporary password for <span className="font-semibold text-foreground">{resetPasswordUser?.name || resetPasswordUser?.email}</span>.
+            </p>
+
+            <div>
+              <Label className="text-xs font-black uppercase tracking-wider">New Password</Label>
+              <Input
+                type="password"
+                className="mt-1 rounded-none border-2"
+                value={resetPasswordData.new_password}
+                onChange={(event) => updateResetPassword("new_password", event.target.value)}
+                data-testid="reset-password-new"
+              />
+              <FieldError message={errors.reset_new_password} />
+            </div>
+
+            <div>
+              <Label className="text-xs font-black uppercase tracking-wider">Confirm Password</Label>
+              <Input
+                type="password"
+                className="mt-1 rounded-none border-2"
+                value={resetPasswordData.confirm_password}
+                onChange={(event) => updateResetPassword("confirm_password", event.target.value)}
+                data-testid="reset-password-confirm"
+              />
+              <FieldError message={errors.reset_confirm_password} />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={closeResetPasswordDialog}
+                className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+                data-testid="cancel-reset-password-btn"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleResetPassword}
+                disabled={busyAction === `reset-password-${resetPasswordUser?.id}`}
+                className="h-10 rounded-none bg-[hsl(38,92%,50%)] text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
+                data-testid="confirm-reset-password-btn"
+              >
+                {busyAction === `reset-password-${resetPasswordUser?.id}` ? "Resetting..." : "Reset Password"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {loading ? (
         <LoadingList />
       ) : users.length === 0 ? (
@@ -617,6 +735,7 @@ export default function UserManagement() {
             const active = userIsActive(item);
             const isSelf = item.id === currentUser?.id;
             const canEditThisUser = canAdminister;
+            const canResetPasswordThisUser = canAdminister && !isSelf && active;
             const canDeactivateThisUser = canAdminister && !isSelf && active;
 
             return (
@@ -666,6 +785,20 @@ export default function UserManagement() {
                       >
                         <Pencil size={14} className="mr-1" />
                         Edit
+                      </Button>
+                    )}
+
+                    {canResetPasswordThisUser && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+                        data-testid={`reset-password-user-${item.email}`}
+                        onClick={() => openResetPasswordDialog(item)}
+                        disabled={busyAction === `reset-password-${item.id}`}
+                      >
+                        <KeyRound size={14} className="mr-1" />
+                        Reset Password
                       </Button>
                     )}
 

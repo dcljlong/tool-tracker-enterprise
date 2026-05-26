@@ -73,6 +73,9 @@ class PasswordChange(BaseModel):
     current_password: str
     new_password: str
 
+class AdminPasswordReset(BaseModel):
+    new_password: str
+
 class ToolCreate(BaseModel):
     asset_id: str
     description: str
@@ -368,6 +371,25 @@ async def update_user(user_id: str, update: UserUpdate, current_user: dict = Dep
     await db.users.update_one(user_query, {"$set": update_dict})
     user = await db.users.find_one(user_query, {"_id": 0, "password": 0})
     return user
+
+@api_router.post("/users/{user_id}/reset-password")
+async def reset_user_password(user_id: str, data: AdminPasswordReset, current_user: dict = Depends(auth_dependency)):
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    if user_id == current_user["user_id"]:
+        raise HTTPException(status_code=400, detail="Use Change Password for your own account")
+    if len(data.new_password or "") < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    user_query = company_filter(current_user, {"id": user_id})
+    target_user = await db.users.find_one(user_query, {"_id": 0, "password": 0})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.users.update_one(user_query, {"$set": {
+        "password": hash_password(data.new_password),
+        "password_updated_at": datetime.now(timezone.utc).isoformat(),
+        "password_reset_by": current_user["user_id"],
+    }})
+    return {"status": "password_reset", "user_id": user_id}
 
 @api_router.delete("/users/{user_id}")
 async def delete_user(user_id: str, current_user: dict = Depends(auth_dependency)):
