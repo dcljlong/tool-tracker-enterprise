@@ -1517,6 +1517,52 @@ async def provision_operator_workspace(
         ],
     }
 
+@api_router.delete("/operator/workspaces/{company_id}/cleanup")
+async def cleanup_operator_test_workspace(
+    company_id: str,
+    operator_context: dict = Depends(operator_dependency)
+):
+    clean_company_id = normalise_company_id(company_id)
+    allowed_cleanup_prefixes = ("phase1e-", "test-")
+
+    if clean_company_id == DEFAULT_COMPANY_ID:
+        raise HTTPException(status_code=400, detail="Refusing to cleanup the default workspace")
+
+    if not clean_company_id.startswith(allowed_cleanup_prefixes):
+        raise HTTPException(status_code=400, detail="Cleanup is restricted to test workspace prefixes")
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    scoped_collections = [
+        "users",
+        "settings",
+        "tools",
+        "categories",
+        "audit_log",
+        "checkouts",
+        "handovers",
+        "maintenance_actions",
+        "notifications",
+        "certificates",
+        "invite_tokens",
+        "password_reset_tokens",
+    ]
+
+    deleted_counts = {}
+
+    for collection_name in scoped_collections:
+        result = await db[collection_name].delete_many({"company_id": clean_company_id})
+        deleted_counts[collection_name] = result.deleted_count
+
+    return {
+        "status": "test_workspace_cleaned",
+        "company_id": clean_company_id,
+        "deleted_counts": deleted_counts,
+        "cleaned_at": now,
+        "safety_rule": "Only company_id prefixes phase1e- and test- are allowed.",
+    }
+
+
 # --- Dashboard Stats ---
 @api_router.get("/dashboard/stats")
 async def dashboard_stats(current_user: dict = Depends(auth_dependency)):
