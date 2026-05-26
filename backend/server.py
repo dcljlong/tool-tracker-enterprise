@@ -219,6 +219,7 @@ async def get_current_user(token: str = None):
                 user["user_id"] = user.get("id")
                 user["company_id"] = normalise_company_id(user.get("company_id"))
                 user["company_name"] = user.get("company_name") or DEFAULT_COMPANY_NAME
+                user["force_password_change"] = bool(user.get("force_password_change", False))
                 return user
         payload["company_id"] = normalise_company_id(payload.get("company_id"))
         payload["company_name"] = payload.get("company_name") or DEFAULT_COMPANY_NAME
@@ -288,14 +289,16 @@ async def login(user: UserLogin):
         raise HTTPException(status_code=403, detail="Account disabled")
     found["company_id"] = normalise_company_id(found.get("company_id"))
     found["company_name"] = found.get("company_name") or DEFAULT_COMPANY_NAME
+    found["force_password_change"] = bool(found.get("force_password_change", False))
     token = create_token(found["id"], found["role"], found["name"])
-    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"]}}
+    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"], "force_password_change": found["force_password_change"]}}
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(auth_dependency)):
     user = await db.users.find_one({"id": current_user["user_id"]}, {"_id": 0, "password": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user["force_password_change"] = bool(user.get("force_password_change", False))
     return user
 
 @api_router.post("/auth/change-password")
@@ -308,7 +311,14 @@ async def change_password(data: PasswordChange, current_user: dict = Depends(aut
         raise HTTPException(status_code=404, detail="User not found")
     if not verify_password(data.current_password, user["password"]):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
-    await db.users.update_one(user_query, {"$set": {"password": hash_password(data.new_password), "password_updated_at": datetime.now(timezone.utc).isoformat()}})
+    await db.users.update_one(user_query, {
+        "$set": {
+            "password": hash_password(data.new_password),
+            "password_updated_at": datetime.now(timezone.utc).isoformat(),
+            "force_password_change": False,
+        },
+        "$unset": {"password_reset_by": ""},
+    })
     return {"status": "password_changed"}
 
 # --- User Management ---
@@ -353,10 +363,12 @@ async def create_user(user: UserCreate, current_user: dict = Depends(auth_depend
         "company_id": target_company_id,
         "company_name": target_company_name,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "is_active": True
+        "is_active": True,
+        "force_password_change": True,
+        "password_updated_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(doc)
-    return {"id": user_id, "email": doc["email"], "name": user.name, "role": user.role, "company_id": doc["company_id"], "company_name": doc["company_name"]}
+    return {"id": user_id, "email": doc["email"], "name": user.name, "role": user.role, "company_id": doc["company_id"], "company_name": doc["company_name"], "force_password_change": doc["force_password_change"]}
 
 @api_router.put("/users/{user_id}")
 async def update_user(user_id: str, update: UserUpdate, current_user: dict = Depends(auth_dependency)):
@@ -388,6 +400,7 @@ async def reset_user_password(user_id: str, data: AdminPasswordReset, current_us
         "password": hash_password(data.new_password),
         "password_updated_at": datetime.now(timezone.utc).isoformat(),
         "password_reset_by": current_user["user_id"],
+        "force_password_change": True,
     }})
     return {"status": "password_reset", "user_id": user_id}
 
