@@ -74,6 +74,10 @@ class PasswordResetConfirm(BaseModel):
     token: str
     new_password: str
 
+class InviteAcceptConfirm(BaseModel):
+    token: str
+    new_password: str
+
 class UserLogin(BaseModel):
     email: str
     password: str
@@ -234,6 +238,7 @@ async def get_current_user(token: str = None):
                 user["company_id"] = normalise_company_id(user.get("company_id"))
                 user["company_name"] = user.get("company_name") or DEFAULT_COMPANY_NAME
                 user["force_password_change"] = bool(user.get("force_password_change", False))
+                user["email_verified"] = bool(user.get("email_verified", False))
                 return user
         payload["company_id"] = normalise_company_id(payload.get("company_id"))
         payload["company_name"] = payload.get("company_name") or DEFAULT_COMPANY_NAME
@@ -389,6 +394,8 @@ async def reset_password(data: PasswordResetConfirm):
             "password": hash_password(data.new_password),
             "password_updated_at": now.isoformat(),
             "force_password_change": False,
+            "email_verified": True,
+            "email_verified_at": now.isoformat(),
         },
         "$unset": {"password_reset_by": ""},
     })
@@ -398,6 +405,56 @@ async def reset_password(data: PasswordResetConfirm):
     )
 
     return {"status": "password_reset"}
+
+@api_router.post("/auth/accept-invite")
+async def accept_invite(data: InviteAcceptConfirm):
+    if len(data.new_password or "") < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+
+    token_hash = hashlib.sha256((data.token or "").encode("utf-8")).hexdigest()
+    token_doc = await db.invite_tokens.find_one({"token_hash": token_hash}, {"_id": 0})
+
+    if not token_doc or token_doc.get("used_at"):
+        raise HTTPException(status_code=400, detail="Invalid or expired invite link")
+
+    try:
+        expires_at = datetime.fromisoformat(token_doc["expires_at"])
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid or expired invite link")
+
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Invalid or expired invite link")
+
+    company_id = normalise_company_id(token_doc.get("company_id"))
+    user_query = {
+        "id": token_doc["user_id"],
+        "company_id": company_id,
+        "email": token_doc["email"],
+    }
+    user = await db.users.find_one(user_query, {"_id": 0})
+    if not user or user.get("invite_status") != "pending":
+        raise HTTPException(status_code=400, detail="Invalid or expired invite link")
+
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(user_query, {
+        "$set": {
+            "password": hash_password(data.new_password),
+            "password_updated_at": now.isoformat(),
+            "force_password_change": False,
+            "is_active": True,
+            "email_verified": True,
+            "email_verified_at": now.isoformat(),
+            "invite_status": "accepted",
+            "invite_accepted_at": now.isoformat(),
+        },
+        "$unset": {"password_reset_by": ""},
+    })
+    await db.invite_tokens.update_one(
+        {"token_hash": token_hash, "company_id": company_id},
+        {"$set": {"used_at": now.isoformat()}},
+    )
+
+    return {"status": "invite_accepted"}
 
 @api_router.post("/auth/login")
 async def login(user: UserLogin):
@@ -409,8 +466,9 @@ async def login(user: UserLogin):
     found["company_id"] = normalise_company_id(found.get("company_id"))
     found["company_name"] = found.get("company_name") or DEFAULT_COMPANY_NAME
     found["force_password_change"] = bool(found.get("force_password_change", False))
+    found["email_verified"] = bool(found.get("email_verified", False))
     token = create_token(found["id"], found["role"], found["name"])
-    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"], "force_password_change": found["force_password_change"]}}
+    return {"token": token, "user": {"id": found["id"], "email": found["email"], "name": found["name"], "role": found["role"], "company_id": found["company_id"], "company_name": found["company_name"], "force_password_change": found["force_password_change"], "email_verified": found["email_verified"]}}
 
 @api_router.get("/auth/me")
 async def get_me(current_user: dict = Depends(auth_dependency)):
@@ -418,6 +476,7 @@ async def get_me(current_user: dict = Depends(auth_dependency)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user["force_password_change"] = bool(user.get("force_password_change", False))
+    user["email_verified"] = bool(user.get("email_verified", False))
     return user
 
 @api_router.post("/auth/change-password")
@@ -487,37 +546,56 @@ async def invite_user(user: UserInvite, current_user: dict = Depends(auth_depend
     if not settings or not settings.get("email_api_key") or not settings.get("sender_email"):
         raise HTTPException(status_code=400, detail="Email is not configured for this workspace")
 
+    now = datetime.now(timezone.utc)
     user_id = str(uuid.uuid4())
-    temporary_password = secrets.token_urlsafe(12)
+    invite_token = secrets.token_urlsafe(32)
+    invite_token_hash = hashlib.sha256(invite_token.encode("utf-8")).hexdigest()
+    pending_password = secrets.token_urlsafe(32)
     target_company_id = current_company_id(current_user)
     target_company_name = current_user.get("company_name") or DEFAULT_COMPANY_NAME
     frontend_url = os.environ.get("FRONTEND_URL", "https://tool-tracker-enterprise.vercel.app").rstrip("/")
+    accept_url = f"{frontend_url}/accept-invite?token={invite_token}"
 
     doc = {
         "id": user_id,
         "email": email,
-        "password": hash_password(temporary_password),
+        "password": hash_password(pending_password),
         "name": name,
         "role": user.role,
         "company_id": target_company_id,
         "company_name": target_company_name,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "invited_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": now.isoformat(),
+        "invited_at": now.isoformat(),
         "invited_by": current_user["user_id"],
-        "is_active": True,
-        "force_password_change": True,
-        "password_updated_at": datetime.now(timezone.utc).isoformat(),
+        "is_active": False,
+        "force_password_change": False,
+        "email_verified": False,
+        "invite_status": "pending",
+        "password_updated_at": now.isoformat(),
     }
 
     await db.users.insert_one(doc)
+    await db.invite_tokens.delete_many({
+        "email": email,
+        "company_id": target_company_id,
+        "used_at": {"$exists": False},
+    })
+    await db.invite_tokens.insert_one({
+        "id": str(uuid.uuid4()),
+        "token_hash": invite_token_hash,
+        "user_id": user_id,
+        "email": email,
+        "company_id": target_company_id,
+        "created_at": now.isoformat(),
+        "expires_at": (now + timedelta(days=7)).isoformat(),
+        "invited_by": current_user["user_id"],
+    })
 
     invite_html = f"""
     <h2>Tool Tracker access invited</h2>
     <p>You have been invited to Tool Tracker for <strong>{target_company_name}</strong>.</p>
-    <p><strong>Login:</strong> {frontend_url}/login</p>
-    <p><strong>Email:</strong> {email}</p>
-    <p><strong>Temporary password:</strong> {temporary_password}</p>
-    <p>You will be asked to set your own password after signing in.</p>
+    <p><a href="{accept_url}">Accept your invite</a></p>
+    <p>This invite link expires in 7 days. You will set your own password during acceptance.</p>
     """
 
     email_sent = await send_notification_email(
@@ -529,6 +607,7 @@ async def invite_user(user: UserInvite, current_user: dict = Depends(auth_depend
     )
 
     if not email_sent:
+        await db.invite_tokens.delete_one({"token_hash": invite_token_hash, "company_id": target_company_id})
         await db.users.delete_one(company_filter(current_user, {"id": user_id}))
         raise HTTPException(status_code=400, detail="Invite email failed; user was not created")
 
@@ -540,7 +619,10 @@ async def invite_user(user: UserInvite, current_user: dict = Depends(auth_depend
         "role": user.role,
         "company_id": target_company_id,
         "company_name": target_company_name,
-        "force_password_change": True,
+        "force_password_change": False,
+        "email_verified": False,
+        "invite_status": "pending",
+        "is_active": False,
     }
 
 @api_router.post("/users")

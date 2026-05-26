@@ -389,7 +389,7 @@ export default function UserManagement() {
         role: inviteUser.role,
       });
 
-      toast.success("Invite email sent");
+      toast.success("Invite email sent with activation link");
       resetInviteDialog();
       fetchUsers();
     } catch (error) {
@@ -536,7 +536,7 @@ export default function UserManagement() {
 
                 <div className="grid gap-3">
                   <p className="text-sm text-muted-foreground">
-                    Sends a Tool Tracker invite email with a temporary password. The user must set their own password on first login.
+                    Sends a Tool Tracker invite email with a secure acceptance link. The user sets their own password during activation.
                   </p>
 
                   <div>
@@ -636,7 +636,7 @@ export default function UserManagement() {
                   </div>
 
                   <div>
-                    <Label className="text-xs font-black uppercase tracking-wider">Temporary Password</Label>
+                    <Label className="text-xs font-black uppercase tracking-wider">Admin-set Initial Password</Label>
                     <Input
                       data-testid="new-user-password"
                       type="password"
@@ -811,7 +811,7 @@ export default function UserManagement() {
 
           <div className="grid gap-3">
             <p className="text-sm text-muted-foreground">
-              Set a new temporary password for <span className="font-semibold text-foreground">{resetPasswordUser?.name || resetPasswordUser?.email}</span>.
+              Set a new admin-set initial password for <span className="font-semibold text-foreground">{resetPasswordUser?.name || resetPasswordUser?.email}</span>.
             </p>
 
             <div>
