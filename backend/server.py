@@ -49,6 +49,10 @@ DEFAULT_COMPANY_NAME = os.environ.get("DEFAULT_COMPANY_NAME", "Default Workspace
 TOOL_TRACKER_APP_ID = "tool_tracker"
 DEFAULT_WORKSPACE_ACCESS_TYPE = os.environ.get("DEFAULT_WORKSPACE_ACCESS_TYPE", "internal").strip().lower() or "internal"
 DEFAULT_WORKSPACE_ACCESS_STATUS = os.environ.get("DEFAULT_WORKSPACE_ACCESS_STATUS", "active").strip().lower() or "active"
+OPERATOR_ACCESS_KEY_HASH = os.environ.get("OPERATOR_ACCESS_KEY_HASH", "").strip()
+ALLOWED_WORKSPACE_ACCESS_TYPES = {"internal", "demo", "trial", "paid"}
+ALLOWED_WORKSPACE_ACCESS_STATUSES = {"active", "suspended", "expired", "cancelled"}
+ALLOWED_PAYMENT_STATUSES = {"not_applicable", "not_required", "pending", "paid", "overdue", "cancelled", "manual_review"}
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -150,6 +154,17 @@ class SettingsUpdate(BaseModel):
     notify_handover: Optional[bool] = None
     notify_days_before: Optional[int] = None
     company_name: Optional[str] = None
+
+class WorkspaceAccessUpdate(BaseModel):
+    company_name: Optional[str] = None
+    access_type: Optional[str] = None
+    access_status: Optional[str] = None
+    access_expires_at: Optional[str] = None
+    apps_enabled: Optional[List[str]] = None
+    payment_status: Optional[str] = None
+    billing_owner: Optional[str] = None
+    billing_owner_email: Optional[str] = None
+    internal_notes: Optional[str] = None
 
 class MaintenanceAction(BaseModel):
     tool_id: str
@@ -343,6 +358,74 @@ async def auth_dependency(request: Request):
     current_user["workspace_access"] = current_user.get("workspace_access") or await get_workspace_access_for_company(current_user.get("company_id"))
     enforce_workspace_access(current_user["workspace_access"], request.url.path)
     return current_user
+
+async def operator_dependency(request: Request):
+    if not OPERATOR_ACCESS_KEY_HASH:
+        raise HTTPException(status_code=404, detail="Operator access is not configured")
+
+    supplied_key = request.headers.get("X-Operator-Key", "")
+    supplied_hash = hashlib.sha256(supplied_key.encode("utf-8")).hexdigest() if supplied_key else ""
+
+    if not supplied_hash or not secrets.compare_digest(supplied_hash, OPERATOR_ACCESS_KEY_HASH):
+        raise HTTPException(status_code=403, detail="Operator access denied")
+
+    return {"operator": True}
+
+def clean_optional_string(value: Any) -> Optional[str]:
+    if value is None:
+        return None
+    clean = str(value).strip()
+    return clean or None
+
+def build_operator_workspace_access_update(data: WorkspaceAccessUpdate) -> Dict[str, Any]:
+    payload = data.model_dump(exclude_unset=True)
+    update_dict: Dict[str, Any] = {}
+
+    if "company_name" in payload:
+        update_dict["company_name"] = clean_optional_string(payload.get("company_name")) or DEFAULT_COMPANY_NAME
+
+    if "access_type" in payload:
+        access_type = str(payload.get("access_type") or "").strip().lower()
+        if access_type not in ALLOWED_WORKSPACE_ACCESS_TYPES:
+            raise HTTPException(status_code=400, detail="Invalid access_type")
+        update_dict["access_type"] = access_type
+
+    if "access_status" in payload:
+        access_status = str(payload.get("access_status") or "").strip().lower()
+        if access_status not in ALLOWED_WORKSPACE_ACCESS_STATUSES:
+            raise HTTPException(status_code=400, detail="Invalid access_status")
+        update_dict["access_status"] = access_status
+
+    if "access_expires_at" in payload:
+        raw_expiry = payload.get("access_expires_at")
+        if raw_expiry in (None, ""):
+            update_dict["access_expires_at"] = None
+        else:
+            try:
+                update_dict["access_expires_at"] = parse_workspace_access_expiry(str(raw_expiry)).isoformat()
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid access_expires_at")
+
+    if "apps_enabled" in payload:
+        apps = [str(item).strip() for item in (payload.get("apps_enabled") or []) if str(item).strip()]
+        if not apps:
+            raise HTTPException(status_code=400, detail="apps_enabled must include at least one app id")
+        update_dict["apps_enabled"] = apps
+
+    if "payment_status" in payload:
+        payment_status = str(payload.get("payment_status") or "").strip().lower()
+        if payment_status not in ALLOWED_PAYMENT_STATUSES:
+            raise HTTPException(status_code=400, detail="Invalid payment_status")
+        update_dict["payment_status"] = payment_status
+
+    for field in ["billing_owner", "billing_owner_email", "internal_notes"]:
+        if field in payload:
+            update_dict[field] = clean_optional_string(payload.get(field))
+
+    if not update_dict:
+        raise HTTPException(status_code=400, detail="No operator access fields to update")
+
+    return update_dict
 
 # --- First Run Check ---
 @api_router.get("/setup/check")
@@ -1219,6 +1302,69 @@ async def test_email(current_user: dict = Depends(auth_dependency)):
         return {"status": "sent", "status_code": response.status_code}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Email test failed: {str(e)}")
+
+# --- Operator Workspace Access Controls ---
+@api_router.get("/operator/workspaces/{company_id}/access")
+async def get_operator_workspace_access(company_id: str, operator_context: dict = Depends(operator_dependency)):
+    clean_company_id = normalise_company_id(company_id)
+    settings_query = {"id": "app_settings", "company_id": clean_company_id}
+    settings = await db.settings.find_one(settings_query, {"_id": 0})
+    settings = settings or {}
+
+    return {
+        "company_id": clean_company_id,
+        "company_name": settings.get("company_name") or DEFAULT_COMPANY_NAME,
+        "settings_exists": bool(settings),
+        "workspace_access": build_workspace_access(settings),
+        "commercial_settings": {
+            "access_type": settings.get("access_type") or DEFAULT_WORKSPACE_ACCESS_TYPE,
+            "access_status": settings.get("access_status") or DEFAULT_WORKSPACE_ACCESS_STATUS,
+            "access_expires_at": settings.get("access_expires_at") or None,
+            "apps_enabled": normalise_apps_enabled(settings.get("apps_enabled")),
+            "payment_status": settings.get("payment_status") or "not_applicable",
+            "billing_owner": settings.get("billing_owner") or None,
+            "billing_owner_email": settings.get("billing_owner_email") or None,
+        },
+    }
+
+@api_router.put("/operator/workspaces/{company_id}/access")
+async def update_operator_workspace_access(
+    company_id: str,
+    data: WorkspaceAccessUpdate,
+    operator_context: dict = Depends(operator_dependency)
+):
+    clean_company_id = normalise_company_id(company_id)
+    settings_query = {"id": "app_settings", "company_id": clean_company_id}
+    existing_settings = await db.settings.find_one(settings_query, {"_id": 0}) or {}
+
+    update_dict = build_operator_workspace_access_update(data)
+    if "company_name" not in update_dict:
+        update_dict["company_name"] = existing_settings.get("company_name") or DEFAULT_COMPANY_NAME
+
+    now = datetime.now(timezone.utc).isoformat()
+    update_dict["id"] = "app_settings"
+    update_dict["company_id"] = clean_company_id
+    update_dict["operator_updated_at"] = now
+    update_dict["updated_at"] = now
+
+    await db.settings.update_one(settings_query, {"$set": update_dict}, upsert=True)
+    settings = await db.settings.find_one(settings_query, {"_id": 0}) or {}
+
+    return {
+        "status": "workspace_access_updated",
+        "company_id": clean_company_id,
+        "company_name": settings.get("company_name") or DEFAULT_COMPANY_NAME,
+        "workspace_access": build_workspace_access(settings),
+        "commercial_settings": {
+            "access_type": settings.get("access_type") or DEFAULT_WORKSPACE_ACCESS_TYPE,
+            "access_status": settings.get("access_status") or DEFAULT_WORKSPACE_ACCESS_STATUS,
+            "access_expires_at": settings.get("access_expires_at") or None,
+            "apps_enabled": normalise_apps_enabled(settings.get("apps_enabled")),
+            "payment_status": settings.get("payment_status") or "not_applicable",
+            "billing_owner": settings.get("billing_owner") or None,
+            "billing_owner_email": settings.get("billing_owner_email") or None,
+        },
+    }
 
 # --- Dashboard Stats ---
 @api_router.get("/dashboard/stats")
