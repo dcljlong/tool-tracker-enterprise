@@ -10,6 +10,7 @@ import {
   FileText,
   ImageIcon,
   QrCode,
+  Printer,
   RefreshCw,
   RotateCcw,
   ShieldAlert,
@@ -301,6 +302,75 @@ export default function ToolDetail() {
   const [maintData, setMaintData] = useState(EMPTY_MAINTENANCE);
 
   const canManage = user?.role === "admin" || user?.role === "site_manager";
+
+  const handlePrintQrLabel = useCallback(() => {
+    if (!tool || !qrCode) {
+      toast.error("QR code is not ready to print yet.");
+      return;
+    }
+
+    const htmlEscape = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;",
+    }[char]));
+
+    const safeAssetId = htmlEscape(tool.asset_id || "Tool");
+    const safeDescription = htmlEscape(tool.description || "");
+    const safeCategory = htmlEscape(tool.category || "");
+    const safeSerial = htmlEscape(tool.serial_number || "");
+    const printWindow = window.open("", "_blank", "width=520,height=720");
+
+    if (!printWindow) {
+      toast.error("Pop-up blocked. Allow pop-ups to print QR labels.");
+      return;
+    }
+
+    const labelHtml = [
+      "<!doctype html>",
+      "<html>",
+      "<head>",
+      "<meta charset='utf-8' />",
+      "<title>QR Label - " + safeAssetId + "</title>",
+      "<style>",
+      "@page { size: 90mm 60mm; margin: 4mm; }",
+      "html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }",
+      ".sheet { width: 82mm; min-height: 52mm; box-sizing: border-box; border: 2px solid #111; padding: 4mm; display: flex; gap: 4mm; align-items: center; }",
+      ".qr { width: 32mm; height: 32mm; object-fit: contain; flex: 0 0 auto; }",
+      ".meta { min-width: 0; flex: 1; }",
+      ".brand { font-size: 8pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2mm; }",
+      ".asset { font-size: 18pt; font-weight: 900; line-height: 1; margin-bottom: 2mm; word-break: break-word; }",
+      ".desc { font-size: 9pt; font-weight: 700; line-height: 1.15; margin-bottom: 2mm; word-break: break-word; }",
+      ".detail { font-size: 7.5pt; line-height: 1.25; color: #333; word-break: break-word; }",
+      ".footer { margin-top: 2mm; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }",
+      ".actions { margin: 12px; display: flex; gap: 8px; }",
+      ".actions button { border: 2px solid #111; background: #fff; padding: 8px 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; }",
+      "@media print { .actions { display: none !important; } .sheet { page-break-inside: avoid; } }",
+      "</style>",
+      "</head>",
+      "<body>",
+      "<div class='actions'><button onclick='window.print()'>Print</button><button onclick='window.close()'>Close</button></div>",
+      "<section class='sheet' aria-label='Tool Tracker QR label'>",
+      "<img class='qr' src='" + qrCode + "' alt='QR code' />",
+      "<div class='meta'>",
+      "<div class='brand'>Long Line Tool Tracker</div>",
+      "<div class='asset'>" + safeAssetId + "</div>",
+      "<div class='desc'>" + safeDescription + "</div>",
+      "<div class='detail'>" + (safeCategory ? "Category: " + safeCategory + "<br />" : "") + (safeSerial ? "Serial: " + safeSerial + "<br />" : "") + "</div>",
+      "<div class='footer'>Scan with Tool Tracker</div>",
+      "</div>",
+      "</section>",
+      "<script>window.onload=function(){setTimeout(function(){window.print();},250);};window.onafterprint=function(){window.close();};<\/script>",
+      "</body>",
+      "</html>"
+    ].join("");
+
+    printWindow.document.open();
+    printWindow.document.write(labelHtml);
+    printWindow.document.close();
+  }, [qrCode, tool]);
 
   const loadToolDetail = useCallback(async ({ showRefresh = false } = {}) => {
     if (showRefresh) setRefreshing(true);
@@ -640,6 +710,18 @@ export default function ToolDetail() {
           >
             <RefreshCw size={14} className={`mr-2 ${refreshing ? "animate-spin" : ""}`} />
             Refresh
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider"
+            onClick={handlePrintQrLabel}
+            disabled={!qrCode}
+            data-testid="print-qr-label-btn"
+          >
+            <Printer size={14} className="mr-2" />
+            Print QR Label
           </Button>
 
           {tool.status === "available" && (
