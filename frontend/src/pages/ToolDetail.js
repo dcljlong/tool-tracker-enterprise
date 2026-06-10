@@ -319,16 +319,15 @@ export default function ToolDetail() {
 
     const safeAssetId = htmlEscape(tool.asset_id || "Tool");
     const safeDescription = htmlEscape(tool.description || "");
-    const safeCategory = htmlEscape(tool.category || "");
-    const safeSerial = htmlEscape(tool.serial_number || "");
+    const safeToolName = safeDescription || safeAssetId;
     const isPowerTool = String(tool.category || "").trim().toLowerCase() === "power tools";
-    const labelPageSize = isPowerTool ? "70mm 45mm" : "90mm 60mm";
-    const labelSheetWidth = isPowerTool ? "62mm" : "82mm";
-    const labelMinHeight = isPowerTool ? "37mm" : "52mm";
-    const labelPadding = isPowerTool ? "3mm" : "4mm";
-    const qrSize = isPowerTool ? "24mm" : "32mm";
-    const assetFontSize = isPowerTool ? "14pt" : "18pt";
-    const descFontSize = isPowerTool ? "7.8pt" : "9pt";
+    const labelPageSize = "A4";
+    const labelSheetWidth = isPowerTool ? "58mm" : "70mm";
+    const labelSheetHeight = isPowerTool ? "32mm" : "38mm";
+    const labelPadding = isPowerTool ? "2.5mm" : "3mm";
+    const qrSize = isPowerTool ? "22mm" : "26mm";
+    const toolNameFontSize = isPowerTool ? "10.5pt" : "12pt";
+    const assetIdFontSize = isPowerTool ? "8pt" : "9pt";
     const printWindow = window.open("", "_blank", "width=520,height=720");
 
     if (!printWindow) {
@@ -343,19 +342,17 @@ export default function ToolDetail() {
       "<meta charset='utf-8' />",
       "<title>QR Label - " + safeAssetId + "</title>",
       "<style>",
-      "@page { size: " + labelPageSize + "; margin: 3mm; }",
-      "html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }",
-      ".sheet { width: " + labelSheetWidth + "; min-height: " + labelMinHeight + "; box-sizing: border-box; border: 2px solid #111; padding: " + labelPadding + "; display: flex; gap: 3mm; align-items: center; }",
+      "@page { size: " + labelPageSize + "; margin: 8mm; }",
+      "html, body { width: 100%; min-height: 0; margin: 0; padding: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; overflow: hidden; }",
+      "body { box-sizing: border-box; }",
+      ".sheet { width: " + labelSheetWidth + "; height: " + labelSheetHeight + "; box-sizing: border-box; border: 2px solid #111; padding: " + labelPadding + "; display: flex; gap: 3mm; align-items: center; page-break-inside: avoid; break-inside: avoid; overflow: hidden; }",
       ".qr { width: " + qrSize + "; height: " + qrSize + "; object-fit: contain; flex: 0 0 auto; }",
-      ".meta { min-width: 0; flex: 1; }",
-      ".brand { font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.5mm; }",
-      ".asset { font-size: " + assetFontSize + "; font-weight: 900; line-height: 1; margin-bottom: 1.5mm; word-break: break-word; }",
-      ".desc { font-size: " + descFontSize + "; font-weight: 700; line-height: 1.12; margin-bottom: 1.5mm; word-break: break-word; }",
-      ".detail { font-size: 7.5pt; line-height: 1.25; color: #333; word-break: break-word; }",
-      ".footer { margin-top: 2mm; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }",
+      ".meta { min-width: 0; flex: 1; overflow: hidden; }",
+      ".tool-name { font-size: " + toolNameFontSize + "; font-weight: 900; line-height: 1.05; margin: 0 0 1.5mm 0; word-break: break-word; max-height: 16mm; overflow: hidden; }",
+      ".asset-id { font-size: " + assetIdFontSize + "; font-weight: 800; line-height: 1.05; margin: 0; text-transform: uppercase; letter-spacing: 0.04em; word-break: break-word; }",
       ".actions { margin: 12px; display: flex; gap: 8px; }",
       ".actions button { border: 2px solid #111; background: #fff; padding: 8px 12px; font-weight: 800; text-transform: uppercase; cursor: pointer; }",
-      "@media print { .actions { display: none !important; } .sheet { page-break-inside: avoid; } }",
+      "@media print { html, body { width: 100%; height: auto; overflow: hidden !important; } .actions { display: none !important; } .sheet { margin: 0; page-break-after: avoid; break-after: avoid; page-break-inside: avoid; break-inside: avoid; } }",
       "</style>",
       "</head>",
       "<body>",
@@ -363,11 +360,8 @@ export default function ToolDetail() {
       "<section class='sheet' aria-label='Tool Tracker QR label'>",
       "<img class='qr' src='" + qrCode + "' alt='QR code' />",
       "<div class='meta'>",
-      "<div class='brand'>Long Line Tool Tracker</div>",
-      "<div class='asset'>" + safeAssetId + "</div>",
-      "<div class='desc'>" + safeDescription + "</div>",
-      "<div class='detail'>" + (safeCategory ? "Category: " + safeCategory + "<br />" : "") + (safeSerial ? "Serial: " + safeSerial + "<br />" : "") + "</div>",
-      "<div class='footer'>Scan with Tool Tracker</div>",
+      "<p class='tool-name'>" + safeToolName + "</p>",
+      "<p class='asset-id'>" + safeAssetId + "</p>",
       "</div>",
       "</section>",
       "<script>window.onload=function(){setTimeout(function(){window.print();},250);};window.onafterprint=function(){window.close();};<\/script>",
