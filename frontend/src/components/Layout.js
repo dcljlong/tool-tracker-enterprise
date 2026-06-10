@@ -709,9 +709,12 @@ export default function Layout() {
               className="flex min-w-0 items-center gap-2 text-left"
               data-testid="compact-logo-link"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(245,190,80,0.32)] bg-[hsl(38,92%,50%)] text-sm font-black uppercase tracking-wider text-black shadow-[0_10px_22px_rgba(245,158,11,0.20)]" data-testid="compact-app-abbrev">
-                LT
-              </span>
+              <img
+                src={toolTrackerLogo}
+                alt="Tool Tracker logo"
+                className="h-10 w-10 shrink-0 object-contain"
+                data-testid="compact-app-logo"
+              />
               <span className="min-w-0 leading-none">
                 <span className="block truncate text-[0.58rem] font-black uppercase tracking-[0.24em] text-[hsl(38,92%,50%)]">
                   Long Line
