@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
+import toolTrackerLogo from "@/assets/tool-tracker-logo.png";
 
 const NAV_ITEMS = [
   {
@@ -476,9 +477,7 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-[4.65rem] w-[4.65rem] shrink-0 items-center justify-center rounded-2xl border border-[rgba(245,190,80,0.36)] bg-[hsl(38,92%,50%)] font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-wider text-black shadow-[0_14px_24px_rgba(245,158,11,0.20)]" data-testid="desktop-app-abbrev">
-              LT
-            </span>
+            <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-[4.65rem] w-[4.65rem] shrink-0 object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.38)]" data-testid="desktop-app-logo" />
             <div className="min-w-0">
               <p className="truncate text-[0.58rem] font-black uppercase tracking-[0.24em] text-[hsl(38,92%,58%)]">
                 Long Line
@@ -486,9 +485,14 @@ export default function Layout() {
               <h1 className="truncate font-['Barlow_Condensed'] text-xl font-black uppercase tracking-widest text-slate-50">
                 Tool Tracker
               </h1>
-              <p className="truncate text-[0.57rem] font-bold uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]">
-                Tool & Asset Control
-              </p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="rounded-md border border-[rgba(245,190,80,0.35)] bg-[rgba(245,190,80,0.12)] px-1.5 py-0.5 text-[0.55rem] font-black uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]" data-testid="desktop-app-abbrev">
+                  LT
+                </span>
+                <p className="truncate text-[0.57rem] font-bold uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]">
+                  Tool & Asset Control
+                </p>
+              </div>
             </div>
           </div>
         </button>
