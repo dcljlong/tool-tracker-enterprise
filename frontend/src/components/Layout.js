@@ -145,10 +145,6 @@ function getDisplayName(user) {
   return user?.name || user?.full_name || user?.email || "Tool Tracker User";
 }
 
-function getUserInitial(user) {
-  const value = getDisplayName(user).trim();
-  return value ? value.charAt(0).toUpperCase() : "U";
-}
 
 function getCurrentPageTitle(pathname) {
   if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
@@ -529,20 +525,7 @@ export default function Layout() {
           {/* TOOL TRACKER RAIL FOOTER PARITY V1 */}
           {/* TOOL TRACKER RAIL RHYTHM V2 */}
           {/* TOOL TRACKER RAIL FINAL VISUAL POLISH V4 */}
-          <div className="px-3 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-[hsl(38,92%,56%)]">
-            Account
-          </div>
-          <div className="mb-3 flex items-center gap-3 rounded-xl border border-[rgba(245,190,80,0.20)] bg-[linear-gradient(135deg,rgba(245,190,80,0.13),rgba(255,255,255,0.035))] px-3 py-2.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.035)]">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[hsl(38,92%,50%)] text-sm font-black text-black shadow-[0_10px_22px_rgba(245,158,11,0.22)]">
-              {getUserInitial(user)}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold text-slate-100">{displayName}</p>
-              <p className="truncate text-xs uppercase tracking-wider text-slate-400">
-                Tool Tracker
-              </p>
-            </div>
-          </div>
+
 
           <div className="flex flex-col items-center gap-2">
             <Button
