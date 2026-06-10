@@ -485,14 +485,9 @@ export default function Layout() {
               <h1 className="truncate font-['Barlow_Condensed'] text-xl font-black uppercase tracking-widest text-slate-50">
                 Tool Tracker
               </h1>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="rounded-md border border-[rgba(245,190,80,0.35)] bg-[rgba(245,190,80,0.12)] px-1.5 py-0.5 text-[0.55rem] font-black uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]" data-testid="desktop-app-abbrev">
-                  LT
-                </span>
-                <p className="truncate text-[0.57rem] font-bold uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]">
-                  Tool & Asset Control
-                </p>
-              </div>
+              <p className="truncate text-[0.57rem] font-bold uppercase tracking-[0.18em] text-[hsl(38,92%,62%)]">
+                Tool & Asset Control
+              </p>
             </div>
           </div>
         </button>
