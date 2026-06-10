@@ -321,6 +321,14 @@ export default function ToolDetail() {
     const safeDescription = htmlEscape(tool.description || "");
     const safeCategory = htmlEscape(tool.category || "");
     const safeSerial = htmlEscape(tool.serial_number || "");
+    const isPowerTool = String(tool.category || "").trim().toLowerCase() === "power tools";
+    const labelPageSize = isPowerTool ? "70mm 45mm" : "90mm 60mm";
+    const labelSheetWidth = isPowerTool ? "62mm" : "82mm";
+    const labelMinHeight = isPowerTool ? "37mm" : "52mm";
+    const labelPadding = isPowerTool ? "3mm" : "4mm";
+    const qrSize = isPowerTool ? "24mm" : "32mm";
+    const assetFontSize = isPowerTool ? "14pt" : "18pt";
+    const descFontSize = isPowerTool ? "7.8pt" : "9pt";
     const printWindow = window.open("", "_blank", "width=520,height=720");
 
     if (!printWindow) {
@@ -335,14 +343,14 @@ export default function ToolDetail() {
       "<meta charset='utf-8' />",
       "<title>QR Label - " + safeAssetId + "</title>",
       "<style>",
-      "@page { size: 90mm 60mm; margin: 4mm; }",
+      "@page { size: " + labelPageSize + "; margin: 3mm; }",
       "html, body { margin: 0; padding: 0; background: #fff; color: #111; font-family: Arial, Helvetica, sans-serif; }",
-      ".sheet { width: 82mm; min-height: 52mm; box-sizing: border-box; border: 2px solid #111; padding: 4mm; display: flex; gap: 4mm; align-items: center; }",
-      ".qr { width: 32mm; height: 32mm; object-fit: contain; flex: 0 0 auto; }",
+      ".sheet { width: " + labelSheetWidth + "; min-height: " + labelMinHeight + "; box-sizing: border-box; border: 2px solid #111; padding: " + labelPadding + "; display: flex; gap: 3mm; align-items: center; }",
+      ".qr { width: " + qrSize + "; height: " + qrSize + "; object-fit: contain; flex: 0 0 auto; }",
       ".meta { min-width: 0; flex: 1; }",
-      ".brand { font-size: 8pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2mm; }",
-      ".asset { font-size: 18pt; font-weight: 900; line-height: 1; margin-bottom: 2mm; word-break: break-word; }",
-      ".desc { font-size: 9pt; font-weight: 700; line-height: 1.15; margin-bottom: 2mm; word-break: break-word; }",
+      ".brand { font-size: 7pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 1.5mm; }",
+      ".asset { font-size: " + assetFontSize + "; font-weight: 900; line-height: 1; margin-bottom: 1.5mm; word-break: break-word; }",
+      ".desc { font-size: " + descFontSize + "; font-weight: 700; line-height: 1.12; margin-bottom: 1.5mm; word-break: break-word; }",
       ".detail { font-size: 7.5pt; line-height: 1.25; color: #333; word-break: break-word; }",
       ".footer { margin-top: 2mm; font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }",
       ".actions { margin: 12px; display: flex; gap: 8px; }",

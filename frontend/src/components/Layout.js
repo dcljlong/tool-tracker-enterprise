@@ -32,7 +32,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
-import toolTrackerLogo from "@/assets/tool-tracker-logo.png";
 
 const NAV_ITEMS = [
   {
@@ -477,7 +476,9 @@ export default function Layout() {
           data-testid="app-title"
         >
           <div className="flex items-center gap-3">
-            <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-[4.65rem] w-[4.65rem] shrink-0 object-contain drop-shadow-[0_14px_24px_rgba(0,0,0,0.38)]" />
+            <span className="flex h-[4.65rem] w-[4.65rem] shrink-0 items-center justify-center rounded-2xl border border-[rgba(245,190,80,0.36)] bg-[hsl(38,92%,50%)] font-['Barlow_Condensed'] text-2xl font-black uppercase tracking-wider text-black shadow-[0_14px_24px_rgba(245,158,11,0.20)]" data-testid="desktop-app-abbrev">
+              LT
+            </span>
             <div className="min-w-0">
               <p className="truncate text-[0.58rem] font-black uppercase tracking-[0.24em] text-[hsl(38,92%,58%)]">
                 Long Line
@@ -567,7 +568,7 @@ export default function Layout() {
               aria-label="Change password"
             >
               <KeyRound size={14} />
-              <span>Password</span>
+              <span className="hidden sm:inline">Password</span>
             </Button>
 
             <Button
@@ -580,7 +581,7 @@ export default function Layout() {
               aria-label="Send Tool Tracker feedback"
             >
               <MessageSquare size={14} />
-              <span>Feedback</span>
+              <span className="hidden sm:inline">Feedback</span>
             </Button>
 
             <Button
@@ -592,7 +593,7 @@ export default function Layout() {
               data-testid="logout-btn"
             >
               <LogOut size={14} />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
 
@@ -706,31 +707,33 @@ export default function Layout() {
                 navigate("/");
                 closeMobileNav();
               }}
-              className="flex min-w-0 items-center gap-3 text-left"
+              className="flex min-w-0 items-center gap-2 text-left"
               data-testid="compact-logo-link"
             >
-              <img src={toolTrackerLogo} alt="Tool Tracker logo" className="h-10 w-10 shrink-0 object-contain" />
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[rgba(245,190,80,0.32)] bg-[hsl(38,92%,50%)] text-sm font-black uppercase tracking-wider text-black shadow-[0_10px_22px_rgba(245,158,11,0.20)]" data-testid="compact-app-abbrev">
+                LT
+              </span>
               <span className="min-w-0 leading-none">
                 <span className="block truncate text-[0.58rem] font-black uppercase tracking-[0.24em] text-[hsl(38,92%,50%)]">
                   Long Line
                 </span>
-                <span className="mt-0.5 block truncate text-[1.02rem] font-black uppercase tracking-[0.08em] text-white">
+                <span className="mt-0.5 block truncate text-[0.96rem] font-black uppercase tracking-[0.08em] text-white">
                   Tool Tracker
                 </span>
-                <span className="mt-0.5 block truncate text-[0.58rem] font-bold uppercase tracking-[0.20em] text-slate-400">
+                <span className="mt-0.5 hidden truncate text-[0.58rem] font-bold uppercase tracking-[0.20em] text-slate-400 sm:block">
                   Tool &amp; Asset Control
                 </span>
               </span>
             </button>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <Button
               type="button"
               variant="secondary"
               size="icon"
               onClick={toggleTheme}
-              className="h-9 w-9 rounded-md border border-white/10 bg-white/5 text-slate-100 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)]"
+              className="h-9 w-9 shrink-0 rounded-md border border-white/10 bg-white/5 text-slate-100 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)]"
               data-testid="mobile-theme-toggle"
               aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
               title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
@@ -742,35 +745,35 @@ export default function Layout() {
               type="button"
               variant="secondary"
               onClick={() => setChangePasswordOpen(true)}
-              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
+              className="h-9 shrink-0 rounded-md border border-white/10 bg-white/5 px-2 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white sm:px-3"
               data-testid="mobile-change-password-btn"
               aria-label="Change password"
             >
               <KeyRound size={16} />
-              <span>Password</span>
+              <span className="hidden sm:inline">Password</span>
             </Button>
 
             <Button
               type="button"
               variant="secondary"
               onClick={handleFeedbackClick}
-              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
+              className="h-9 shrink-0 rounded-md border border-white/10 bg-white/5 px-2 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white sm:px-3"
               data-testid="mobile-feedback-btn"
               aria-label="Send Tool Tracker feedback"
             >
               <MessageSquare size={16} />
-              <span>Feedback</span>
+              <span className="hidden sm:inline">Feedback</span>
             </Button>
 
             <Button
               type="button"
               variant="secondary"
               onClick={handleLogout}
-              className="h-9 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white"
+              className="h-9 shrink-0 rounded-md border border-white/10 bg-white/5 px-2 text-sm font-semibold tracking-normal text-slate-200 shadow-none hover:border-[rgba(245,190,80,0.30)] hover:bg-[rgba(245,190,80,0.12)] hover:text-white sm:px-3"
               data-testid="mobile-logout-btn"
             >
               <LogOut size={16} />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </Button>
           </div>
         </div>
