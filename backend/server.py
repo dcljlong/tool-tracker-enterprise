@@ -55,6 +55,15 @@ ALLOWED_WORKSPACE_ACCESS_STATUSES = {"active", "suspended", "expired", "cancelle
 ALLOWED_PAYMENT_STATUSES = {"not_applicable", "not_required", "pending", "paid", "overdue", "cancelled", "manual_review"}
 
 app = FastAPI()
+
+# TOOL TRACKER / ROOT BACKEND HEALTH ROUTES V1
+@app.get("/")
+async def app_root():
+    return {"message": "Tool Tracker API", "status": "operational"}
+
+@app.get("/health")
+async def app_health_check():
+    return {"status": "healthy", "service": "tool-tracker"}
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
