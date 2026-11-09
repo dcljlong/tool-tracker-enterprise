@@ -9,10 +9,10 @@ Goal: retire the Emergent FastAPI + MongoDB server. The tool tracker runs on the
 | Step | What | Status |
 |---|---|---|
 | 1 | Database tables, company separation (RLS), private photo/PDF storage | **Done 9 Nov 2026** – applied to Site-Day project |
-| 2 | Sign-up and login (Supabase Auth, shared with Site-Day) | Next |
-| 3 | Switch the screens from the FastAPI server to Supabase (12 pages, ~50 API calls) | Next |
+| 2 | Sign-up and login (Supabase Auth, shared with Site-Day) | **Built 10 Nov** – on branch preview, needs Davy's sign-in test |
+| 3 | Switch the screens from the FastAPI server to Supabase (12 pages, ~50 API calls) | **Built 10 Nov** – `frontend/src/lib/supabaseApi.js` |
 | 4 | Stripe: checkout, customer portal, webhook → `tt_subscriptions` | After 3 |
-| 5 | Invite team members (edge function, service role, seat limit) | After 3 |
+| 5 | Invite team members (edge function, service role, seat limit) | **Built 10 Nov** – `tt-team` edge function deployed |
 | 6 | Reminders (tag expiry, overdue returns) – scheduled edge function | After 4 |
 | 7 | Copy live data from MongoDB + photos/PDFs into Supabase, then switch off Emergent | Last |
 
@@ -73,3 +73,23 @@ Stripe account: **Long Line Site-Day** (`acct_1RfsPPLb1OAiQ1Mf`, live). It only 
   (cheaper than ShareMyToolbox's ~US$100/month for 5 users). Site-Day add-on discount to decide later.
 - Trial: 14 days (same as Site-Day).
 - Still to do from the laptop: Stripe sandbox test keys; turn on leaked-password protection in Supabase Auth.
+
+## One brand domain (ready, just add the domain)
+
+All app addresses live in `frontend/src/lib/siteConfig.js`. When the domain is bought:
+1. Cloudflare: add custom domain `tools.<domain>` to the tool tracker Pages project.
+2. Hosting env var: `REACT_APP_BRAND_DOMAIN=<domain>` – the app then links to `siteday.`, `timesheets.`, `fitout.` and the
+   launcher on the bare domain automatically.
+3. Supabase Auth → URL Configuration: add `https://tools.<domain>/**` to Redirect URLs (sign-up confirm, invites, resets).
+4. Edge function secret `TT_ALLOWED_ORIGINS=https://tools.<domain>` (locks the team function to the real site).
+5. Stripe success/cancel URLs and Customer Portal return URL use the same address (step 4 work).
+
+## Testing the preview (10 Nov)
+
+- Preview of branch `supabase/move-part-1`:
+  https://tool-tracker-enterprise-git-supabase-c7ad9f-dcljlongs-projects.vercel.app (Supabase settings are set for this
+  branch's previews only; production still runs the old server).
+- Throwaway test login made in Supabase: `tt-test-owner@longline.invalid` (password given to Davy in chat). Delete
+  it after testing.
+- Supabase Auth needs, from the dashboard: Redirect URL `https://*-dcljlongs-projects.vercel.app/**` for previews;
+  leaked-password protection on; custom SMTP before launch (the built-in sender is rate-limited and for testing only).
