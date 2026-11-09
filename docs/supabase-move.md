@@ -115,3 +115,15 @@ Stripe lookup keys (create in the sandbox, NZD, monthly/yearly recurring):
 Secrets (Supabase > Edge Functions > Secrets): `TT_STRIPE_SECRET_KEY`, `TT_STRIPE_WEBHOOK_SECRET`, `TT_ALLOWED_ORIGINS`.
 Webhook events: checkout.session.completed, customer.subscription.created/updated/deleted, invoice.paid, invoice.payment_failed.
 Customer Portal: allow card update, cancel, invoice history; for crew allow quantity changes on the extra-seat price.
+
+### Stripe test mode setup (done 10 Nov 2026)
+- Account Long Line Site-Day, **test mode**. Products: Personal Plus (`prod_Vb8dqwYY7LR6jH`), Crew (`prod_Vb8dPmdLvk0FNv`),
+  Crew extra user (`prod_Vb8dSHH1bMxhnv`); four NZD prices with the `tt_` lookup keys (tax behaviour: inclusive).
+- Customer Portal config `bpc_1UZwMbLb1OAiQ1MfL7NsFJUS` (test-mode default; card, invoices, name/email/address, cancel at period end).
+  For live, create a separate config and set `TT_STRIPE_PORTAL_CONFIG` so Site-Day's default isn't used.
+- Webhook endpoint `we_1UZwNwLb1OAiQ1MfNTxHMICH` → `tt-stripe-webhook`.
+- Supabase secrets set by Davy: `TT_STRIPE_SECRET_KEY` (test), `TT_STRIPE_WEBHOOK_SECRET`.
+- Edge functions deployed: `tt-billing` (v1, verify_jwt on), `tt-stripe-webhook` (v1, verify_jwt off).
+- End-to-end test (API-driven, test card): subscribe → company on Personal Plus active with period end; cancel at period end →
+  flag set; cancel now → back to free tier. 4 webhook events, all processed, no errors. Test customer `cus_Vb8lxNq0plc5Zt`.
+- Still to test by hand in the preview: the Plan & billing buttons (Stripe Checkout page) and Manage billing.

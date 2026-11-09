@@ -1,7 +1,8 @@
 // Tool tracker billing for the signed-in admin: start a Stripe Checkout for a plan, or open the Stripe
 // Customer Portal (change card, invoices, cancel). Only company admins can do either.
 //
-// Secrets: TT_STRIPE_SECRET_KEY (sk_test_... while testing), TT_ALLOWED_ORIGINS (the app's address(es)).
+// Secrets: TT_STRIPE_SECRET_KEY (sk_test_... while testing), TT_ALLOWED_ORIGINS (the app's address(es)),
+// TT_STRIPE_PORTAL_CONFIG (bpc_... the tool tracker's Customer Portal settings).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import { checkoutLineKeys, stripeForm } from "../_shared/tt_billing.ts";
@@ -71,7 +72,12 @@ Deno.serve(async (req) => {
 
     if (action === "portal") {
       if (!sub?.provider_customer_id) return reply(400, { detail: "There's no billing account yet. Choose a plan first." });
-      const session = await stripe("billing_portal/sessions", { customer: sub.provider_customer_id, return_url: `${returnUrl}portal` });
+      const session = await stripe("billing_portal/sessions", {
+        customer: sub.provider_customer_id,
+        return_url: `${returnUrl}portal`,
+        // The tool tracker's own portal settings (Site-Day may use the account's default ones).
+        configuration: Deno.env.get("TT_STRIPE_PORTAL_CONFIG") || undefined,
+      });
       return reply(200, { url: session.url });
     }
 
