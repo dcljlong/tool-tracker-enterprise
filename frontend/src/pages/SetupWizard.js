@@ -224,7 +224,7 @@ function SetupShell({ step, children }) {
   );
 }
 
-export default function SetupWizard({ onComplete }) {
+export default function SetupWizard({ onComplete, onStart }) {
   const { setupAdmin } = useAuth();
 
   const [step, setStep] = useState(1);
@@ -330,6 +330,7 @@ export default function SetupWizard({ onComplete }) {
     setBusyAction("admin");
 
     try {
+      if (onStart) onStart();
       await setupAdmin({
         name: adminData.name.trim(),
         email: normaliseEmail(adminData.email),

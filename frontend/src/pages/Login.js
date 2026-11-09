@@ -148,6 +148,15 @@ export default function Login() {
           </button>
         </form>
 
+        {!forgotMode && (
+          <p className="tt-login-footnote">
+            New here?{" "}
+            <a href="/setup" data-testid="create-account-link" style={{ textDecoration: "underline" }}>
+              Create an account
+            </a>
+          </p>
+        )}
+
         <p className="tt-login-footnote">
           Built for construction tools, service records, handovers, and live asset visibility.
         </p>

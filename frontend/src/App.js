@@ -465,6 +465,8 @@ function ProtectedRoute({ children }) {
 function AppRoutes() {
   const { user, loading } = useAuth();
   const [isFirstRun, setIsFirstRun] = useState(null);
+  // Sign-up runs through the setup wizard; keep it on screen after the account is created mid-wizard.
+  const [setupActive, setSetupActive] = useState(false);
 
   useEffect(() => {
     api
@@ -488,8 +490,14 @@ function AppRoutes() {
       <Route
         path="/setup"
         element={
-          isFirstRun ? (
-            <SetupWizard onComplete={() => setIsFirstRun(false)} />
+          isFirstRun || !user || setupActive ? (
+            <SetupWizard
+              onStart={() => setSetupActive(true)}
+              onComplete={() => {
+                setSetupActive(false);
+                setIsFirstRun(false);
+              }}
+            />
           ) : (
             <Navigate to="/" replace />
           )

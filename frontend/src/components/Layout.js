@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 import api from "@/lib/api";
+import { appLink } from "@/lib/siteConfig";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { Badge } from "@/components/ui/badge";
@@ -108,19 +109,19 @@ const PAGE_TITLES = {
 
 const SUITE_LINKS = [
   {
-    href: process.env.REACT_APP_LONG_LINE_DIARY_URL || "https://lld-cody.vercel.app/dashboard",
+    href: appLink("siteDay", "/dashboard"),
     icon: BookOpen,
     label: "LLD",
     description: "Site diary",
   },
   {
-    href: process.env.REACT_APP_TIMESHEET_MANAGER_URL || "https://timesheet-manager-two.vercel.app",
+    href: appLink("timesheets"),
     icon: Clock3,
     label: "Timesheet",
     description: "Labour control",
   },
   {
-    href: process.env.REACT_APP_FITOUTOS_URL || "https://fitout-os-project.vercel.app",
+    href: appLink("fitout"),
     icon: Building2,
     label: "FitoutOS",
     description: "Programme control",
@@ -790,7 +791,7 @@ export default function Layout() {
               <span className="mx-1 h-5 w-px shrink-0 bg-white/10" aria-hidden="true" />
 
               <a
-                href={process.env.REACT_APP_LONG_LINE_SUITE_LAUNCHER_URL || "https://long-line-suite-launcher.vercel.app"}
+                href={appLink("launcher")}
                 target="_blank"
                 rel="noreferrer"
                 data-testid="compact-suite-launcher"
@@ -798,7 +799,7 @@ export default function Layout() {
                 Launcher
               </a>
               <a
-                href={process.env.REACT_APP_LONG_LINE_DIARY_URL || "https://lld-cody.vercel.app/dashboard"}
+                href={appLink("siteDay", "/dashboard")}
                 className="compact-suite-link shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold text-[hsl(38,92%,56%)] transition hover:bg-white/5 hover:text-white"
                 data-testid="compact-suite-lld"
               >
@@ -806,7 +807,7 @@ export default function Layout() {
               </a>
 
               <a
-                href={process.env.REACT_APP_TIMESHEET_MANAGER_URL || "https://timesheet-manager-two.vercel.app/dashboard"}
+                href={appLink("timesheets", "/dashboard")}
                 className="compact-suite-link shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold text-[hsl(38,92%,56%)] transition hover:bg-white/5 hover:text-white"
                 data-testid="compact-suite-timesheet"
               >
@@ -814,7 +815,7 @@ export default function Layout() {
               </a>
 
               <a
-                href={process.env.REACT_APP_FITOUTOS_URL || "https://fitout-os-project.vercel.app/dashboard"}
+                href={appLink("fitout", "/dashboard")}
                 className="compact-suite-link shrink-0 rounded-md px-2.5 py-1.5 text-sm font-semibold text-[hsl(38,92%,56%)] transition hover:bg-white/5 hover:text-white"
                 data-testid="compact-suite-fitoutos"
               >

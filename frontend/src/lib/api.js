@@ -1,26 +1,9 @@
-import axios from 'axios';
+// The screens import this. When Supabase settings are present the app talks to Supabase;
+// otherwise it falls back to the old FastAPI server (REACT_APP_BACKEND_URL) so nothing breaks mid-move.
+import restApi from "./restApi";
+import supabaseApi from "./supabaseApi";
+import { useSupabase } from "./siteConfig";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API_BASE = `${BACKEND_URL}/api`;
-
-const api = axios.create({ baseURL: API_BASE });
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(err);
-  }
-);
+const api = useSupabase ? supabaseApi : restApi;
 
 export default api;

@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from './api';
+import { useSupabase } from './siteConfig';
+import { supabase, clearContext } from './supabaseApi';
 
 const AuthContext = createContext(null);
 
@@ -11,6 +13,30 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (useSupabase) {
+      supabase.auth.getSession().then(({ data }) => {
+        if (!data.session) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        api.get('/auth/me').then(res => {
+          setUser(res.data);
+          localStorage.setItem('user', JSON.stringify(res.data));
+        }).catch(() => setUser(null)).finally(() => setLoading(false));
+      });
+      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_OUT') {
+          clearContext();
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+      });
+      return () => sub.subscription.unsubscribe();
+    }
     const token = localStorage.getItem('token');
     if (token) {
       api.get('/auth/me').then(res => {
@@ -43,6 +69,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    if (useSupabase) {
+      clearContext();
+      supabase.auth.signOut();
+    }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
