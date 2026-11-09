@@ -202,6 +202,42 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
 select pg_temp.run('btrial', format('insert into public.tt_tools (company_id, asset_id, description) select %L, ''B-''||g, ''x'' from generate_series(1,26) g', (select b from idsb)));
 select pg_temp.ok('Other company in trial: no tool limit', pg_temp.err('btrial') is null, pg_temp.err('btrial'));
 
+-- 9. Borrowers screen (part 5): lend straight to a named person with no login
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+insert into public.tt_tools (company_id, asset_id, description) select a, 'LEND-01', 'Lend test saw' from ids where a is not null;
+select pg_temp.ok('Check out straight to a borrower (no login)',
+  pg_temp.try($q$insert into public.tt_checkouts (company_id, tool_id, borrower_id, holder_name)
+     select t.company_id, t.id, b.id, 'pending' from public.tt_tools t, public.tt_borrowers b
+     where t.asset_id = 'LEND-01' and b.name = 'Uncle Bob'$q$) is null);
+select pg_temp.ok('Borrower check-out takes their name and marks the tool out',
+  (select c.holder_name from public.tt_checkouts c join public.tt_tools t on t.id = c.tool_id where t.asset_id = 'LEND-01' and c.status = 'active') = 'Uncle Bob'
+  and (select status from public.tt_tools where asset_id = 'LEND-01') = 'checked_out');
+select pg_temp.ok('Borrower with history cannot be deleted',
+  pg_temp.try($q$delete from public.tt_borrowers where name = 'Uncle Bob'$q$) is not null);
+insert into public.tt_borrowers (company_id, name) select a, 'Spare Sam' from ids where a is not null;
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000a3', 'worker2-a@x.co');
+insert into public.tt_members (company_id, user_id, name, role)
+  select a, '00000000-0000-0000-0000-0000000000a3', 'Worker Two', 'worker' from ids where a is not null;
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a3');
+select pg_temp.ok('Worker can add a borrower',
+  pg_temp.try($q$insert into public.tt_borrowers (company_id, name) select company_id, 'Worker''s mate' from public.tt_tools limit 1$q$) is null);
+select pg_temp.ok('Worker''s new borrower is saved', (select count(*) from public.tt_borrowers where name = 'Worker''s mate') = 1);
+delete from public.tt_borrowers where name = 'Spare Sam';
+select pg_temp.ok('Worker cannot remove a borrower', (select count(*) from public.tt_borrowers where name = 'Spare Sam') = 1);
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.ok('Other company cannot lend to A''s borrower',
+  pg_temp.try(format($q$insert into public.tt_checkouts (company_id, tool_id, borrower_id, holder_name)
+     select %L, t.id, (select id from public.tt_borrowers where name = 'Spare Sam'), 'x' from public.tt_tools t limit 1$q$, (select b from idsb))) is not null);
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+delete from public.tt_borrowers where name = 'Spare Sam';
+select pg_temp.ok('Admin can remove a borrower with no history', (select count(*) from public.tt_borrowers where name = 'Spare Sam') = 0);
+select pg_temp.ok('Return from a borrower works',
+  pg_temp.try($q$update public.tt_checkouts c set status = 'returned' from public.tt_tools t
+     where t.id = c.tool_id and t.asset_id = 'LEND-01' and c.status = 'active'$q$) is null);
+select pg_temp.ok('Tool is available again after the borrower returns it',
+  (select status from public.tt_tools where asset_id = 'LEND-01') = 'available');
+
 reset role;
 \set QUIET off
 select n, case when pass then 'ok' else 'FAIL' end as result, test, detail from results order by n;

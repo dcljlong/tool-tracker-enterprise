@@ -6,6 +6,7 @@ import {
   BookOpen,
   Building2,
   Clock3,
+  Contact,
   ExternalLink,
   KeyRound,
   FileText,
@@ -59,6 +60,13 @@ const NAV_ITEMS = [
     roles: ["admin", "site_manager", "worker"],
   },
   {
+    to: "/borrowers",
+    icon: Contact,
+    label: "Borrowers",
+    description: "People you lend to",
+    roles: ["admin", "site_manager", "worker"],
+  },
+  {
     to: "/calendar",
     icon: Calendar,
     label: "Calendar",
@@ -99,6 +107,7 @@ const PAGE_TITLES = {
   "/": "Dashboard",
   "/scan": "Scan QR",
   "/tools": "Tool Catalog",
+  "/borrowers": "Borrowers",
   "/calendar": "Calendar",
   "/categories": "Categories",
   "/reports": "Reports",
@@ -169,17 +178,20 @@ function formatAccessText(value, fallback = "Not set") {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function formatAccessExpiry(value) {
-  if (!value) return "No expiry";
+const EXPIRY_PREFIX = { trial_ends: "Trial ends", cancels: "Cancels", renews: "Renews" };
+
+function formatAccessExpiry(value, kind) {
+  if (!value) return kind === "free" ? "Free - no end date" : "No end date";
 
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Expiry not readable";
+  if (Number.isNaN(date.getTime())) return "Date not readable";
 
-  return date.toLocaleDateString("en-NZ", {
+  const text = date.toLocaleDateString("en-NZ", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+  return EXPIRY_PREFIX[kind] ? `${EXPIRY_PREFIX[kind]} ${text}` : text;
 }
 
 function getAccessBannerConfig(access = {}) {
@@ -214,6 +226,15 @@ function getAccessBannerConfig(access = {}) {
     };
   }
 
+  if (accessType === "active" && access.access_expiry_kind === "cancels") {
+    return {
+      toneClass: "border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100",
+      badgeClass: "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+      title: "Plan cancelled - still active until the end date",
+      message: "Your records stay. You can restart the plan any time in Settings, under Plan & billing.",
+    };
+  }
+
   if (accessType === "active") {
     return {
       toneClass: "border-emerald-500/35 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100",
@@ -245,7 +266,7 @@ function AccessStatusBanner({ access }) {
   const config = getAccessBannerConfig(safeAccess);
   const accessType = formatAccessText(safeAccess.access_type || "internal");
   const accessStatus = formatAccessText(safeAccess.access_status || "active");
-  const expiry = formatAccessExpiry(safeAccess.access_expires_at);
+  const expiry = formatAccessExpiry(safeAccess.access_expires_at, safeAccess.access_expiry_kind);
 
   return (
     <section

@@ -28,6 +28,8 @@ const friendly = (message = "") => {
   if (/row-level security|permission denied/i.test(message)) return "You don't have permission to do that (or the trial has ended - see Settings, Plan & billing).";
   if (/duplicate key.*asset/i.test(message)) return "Asset ID already exists";
   if (/duplicate key.*categor/i.test(message)) return "Category already exists";
+  if (/borrower_id_fkey/i.test(message)) return "This person has borrowed tools before, so they stay on the list to keep your records. You can still edit their details.";
+  if (/tt_borrowers.*name|name.*check constraint/i.test(message)) return "Enter a name (up to 120 characters).";
   return message || "Something went wrong";
 };
 
@@ -96,6 +98,15 @@ function subscriptionActive(sub) {
   return subscriptionPaid(sub) || sub?.plan === "personal";
 }
 
+// What the banner's date badge shows: trial end, cancel date or renewal date.
+function accessExpiry(sub = {}) {
+  if (sub.status === "trial" && sub.trial_ends_at) return { access_expires_at: sub.trial_ends_at, access_expiry_kind: "trial_ends" };
+  if (sub.current_period_end && ["active", "past_due"].includes(sub.status)) {
+    return { access_expires_at: sub.current_period_end, access_expiry_kind: sub.cancel_at_period_end ? "cancels" : "renews" };
+  }
+  return { access_expires_at: null, access_expiry_kind: subscriptionPaid(sub) ? "none" : "free" };
+}
+
 function meShape(ctx) {
   const { user, me, company, subscription, workspaces } = ctx;
   return {
@@ -116,6 +127,7 @@ function meShape(ctx) {
       access_type: subscription.plan === "personal" && !subscriptionPaid(subscription) ? "free" : subscription.status,
       plan: subscription.plan,
       trial_ends_at: subscription.trial_ends_at,
+      ...accessExpiry(subscription),
     },
     workspaces: workspaces.map((w) => ({ company_id: w.company_id, company_name: w.tt_companies?.name, role: w.role })),
   };
@@ -507,6 +519,59 @@ on("GET", "/checkouts", async (_, __, params = {}) => {
   if (params.status) q = q.eq("status", params.status);
   if (params.tool_id) q = q.eq("tool_id", params.tool_id);
   return check(await q.order("checked_out_at", { ascending: false }).limit(1000)).map((r) => checkoutShape(r));
+});
+
+// ---- borrowers (people you lend to who don't have a login) ----
+const BORROWER_FIELDS = ["name", "phone", "email", "notes"];
+
+function borrowerBody(body) {
+  const out = {};
+  BORROWER_FIELDS.forEach((k) => {
+    if (body[k] === undefined) return;
+    const v = String(body[k] ?? "").trim();
+    out[k] = k === "notes" ? v : (v || null);
+  });
+  if (out.name === null) fail(400, "Enter a name.");
+  return out;
+}
+
+on("GET", "/borrowers", async () => {
+  const ctx = await context();
+  const people = check(await supabase.from("tt_borrowers").select("*").eq("company_id", ctx.companyId).order("name"));
+  const loans = check(await supabase.from("tt_checkouts")
+    .select("id, borrower_id, tool_id, status, checked_out_at, expected_return_date, returned_at, tt_tools:tt_tools!tt_checkouts_company_id_tool_id_fkey(asset_id, description)")
+    .eq("company_id", ctx.companyId).not("borrower_id", "is", null).order("checked_out_at", { ascending: false }).limit(2000));
+  const today = new Date().toISOString().slice(0, 10);
+  return people.map((p) => {
+    const mine = loans.filter((l) => l.borrower_id === p.id);
+    const out = mine.filter((l) => l.status === "active").map((l) => ({
+      checkout_id: l.id, tool_id: l.tool_id, asset_id: l.tt_tools?.asset_id || "", description: l.tt_tools?.description || "",
+      checked_out_at: l.checked_out_at, expected_return_date: l.expected_return_date,
+      overdue: Boolean(l.expected_return_date && l.expected_return_date < today),
+    }));
+    return { ...p, tools_out: out, times_borrowed: mine.length, last_borrowed_at: mine[0]?.checked_out_at || null };
+  });
+});
+
+on("POST", "/borrowers", async (_, body) => {
+  const ctx = await context();
+  const fields = borrowerBody(body);
+  if (!fields.name) fail(400, "Enter a name.");
+  return check(await supabase.from("tt_borrowers").insert({ notes: "", ...fields, company_id: ctx.companyId }).select().single());
+});
+
+on("PUT", "/borrowers/([^/]+)", async ([id], body) => {
+  const ctx = await context();
+  return check(await supabase.from("tt_borrowers").update(borrowerBody(body))
+    .eq("company_id", ctx.companyId).eq("id", id).select().single(), 404);
+});
+
+on("DELETE", "/borrowers/([^/]+)", async ([id]) => {
+  const ctx = await context();
+  const { data, error } = await supabase.from("tt_borrowers").delete().eq("company_id", ctx.companyId).eq("id", id).select("id");
+  if (error) fail(400, friendly(error.message));
+  if (!data?.length) fail(403, "Only an admin or site manager can remove people.");
+  return { status: "deleted" };
 });
 
 // ---- maintenance ----

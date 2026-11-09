@@ -39,7 +39,7 @@ Rules enforced in the database (not just the screens):
   (Personal users keep their records when they upgrade – same company, plan changes.)
 - Billing state can only be written by the server.
 
-Tests: `supabase/tests/tool_tracker_rls_test.sql` (40 checks). Run against a scratch Postgres:
+Tests: `supabase/tests/tool_tracker_rls_test.sql` (63 checks). Run against a scratch Postgres:
 
 ```
 psql -d scratch -f supabase/tests/supabase_stub.sql
@@ -133,7 +133,38 @@ Customer Portal: allow card update, cancel, invoice history; for crew allow quan
 
 ### To do next (from Davy's preview test, 10 Nov)
 - Check-out works in the preview. Handover list was empty because the test account has one user - now says so.
-- **Borrowers screen missing:** personal plan needs "lend to a named person" (name + phone, no login). Database already has
-  `tt_borrowers` and `tt_hand_over(p_borrower)`; the screens don't use them yet. Build in part 5.
+- ~~Borrowers screen missing~~ **Done in part 5 (10 Nov)** - see below.
 - Later feature (after go-live): company branding on the Crew plan (logo, name, colour on screens, PDFs, QR labels, emails).
 - Stripe account public name and statement descriptor changed to **Long Line** (10 Nov). Domain not bought yet (pick: longlineworks.com).
+
+## Part 5 (10 Nov 2026) – borrowers screen and banner date
+
+- **Borrowers** page (menu: Borrowers): people you lend to who don't need a login. Add / edit (name, phone, email, notes),
+  search, what each person has out now with due / overdue dates, how many times they've borrowed. Admin or site manager
+  can remove someone with no borrowing history; anyone with history stays (keeps the records - database rule).
+- **Check Out** and **Handover** boxes now ask "Who's taking it?": me, a team member, a saved borrower, or
+  "+ Someone new" (name / phone / email typed in on the spot, saved to Borrowers). On the personal plan, and whenever
+  the tool goes to a borrower, job number / site / site manager are optional.
+- Plan banner date badge now reads "Trial ends …", "Renews …" or "Cancels …" (was always "No expiry"); a cancelled plan
+  gets its own amber message.
+- No database change needed (live constraint names checked). 63 database checks pass, including 10 new borrower checks.
+
+## Going live – checklist
+
+Claude can do (once Davy says go):
+1. Merge `supabase/move-part-1` into main (one production deploy on Vercel).
+2. Copy the current data from the Emergent version into Supabase (tools, people, history, photos, certificates),
+   check counts match, then switch Emergent off. Needs Davy's go-ahead plus the Emergent database export.
+3. Live Stripe: create live products/prices with the same lookup keys, live portal config, live webhook pointing at
+   `tt-stripe-webhook`, and point the functions at the live keys.
+4. Delete the throwaway test login and test Stripe customer.
+5. Domain wiring (when bought): `siteConfig.js`, Vercel domain, Cloudflare DNS, Supabase redirect URLs,
+   `TT_ALLOWED_ORIGINS`, Stripe return URLs.
+
+Davy has to do (laptop, needs his logins):
+- Buy the domain (Cloudflare).
+- Stripe: switch to live mode and paste the live secret key + webhook secret into Supabase secrets.
+- Supabase Auth: leaked-password protection on; own email sender (SMTP, e.g. Resend) so sign-up / reset emails
+  aren't rate-limited; add the real site to Redirect URLs.
+- Decide on terms of use and privacy page wording (Claude drafts, Davy approves).
+- A final hand test on the preview: lend a tool to someone new, return it, check Borrowers and Reports.

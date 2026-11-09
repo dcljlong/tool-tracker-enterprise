@@ -29,11 +29,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BorrowerForm } from "@/pages/Borrowers";
 import { Textarea } from "@/components/ui/textarea";
 import { ToolCertificates } from "@/components/ToolCertificates";
 
+const EMPTY_PERSON = { name: "", phone: "", email: "" };
+
 const EMPTY_CHECKOUT = {
+  holder: "me",
+  new_person: EMPTY_PERSON,
   job_number: "",
   site: "",
   site_manager: "",
@@ -48,6 +53,7 @@ const EMPTY_RETURN = {
 
 const EMPTY_HANDOVER = {
   next_holder_id: "",
+  new_person: EMPTY_PERSON,
   job_number: "",
   site_manager: "",
   notes: "",
@@ -265,6 +271,54 @@ function EmptyPanel({ icon: Icon, title, description }) {
   );
 }
 
+// "Who's taking it?" - me, someone in the team (has a login), a saved borrower, or someone new (no login).
+function HolderPicker({ value, onChange, me, users, borrowers, excludeId, newPerson, onNewPerson, error, testId }) {
+  return (
+    <div>
+      <RequiredLabel>Who's taking it?</RequiredLabel>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="mt-1 rounded-none border-2" data-testid={testId}>
+          <SelectValue placeholder="Choose a person" />
+        </SelectTrigger>
+        <SelectContent>
+          {me && <SelectItem value="me">Me ({me.name})</SelectItem>}
+          {users.length > 0 && (
+            <SelectGroup>
+              <SelectLabel>Team</SelectLabel>
+              {users.filter((u) => u.id !== excludeId).map((u) => (
+                <SelectItem key={u.id} value={`user:${u.id}`}>{u.name} ({getUserRoleLabel(u.role)})</SelectItem>
+              ))}
+            </SelectGroup>
+          )}
+          {borrowers.filter((b) => b.id !== excludeId).length > 0 && (
+            <SelectGroup>
+              <SelectLabel>Borrowers</SelectLabel>
+              {borrowers.filter((b) => b.id !== excludeId).map((b) => (
+                <SelectItem key={b.id} value={`borrower:${b.id}`}>{b.name}{b.phone ? ` - ${b.phone}` : ""}</SelectItem>
+              ))}
+            </SelectGroup>
+          )}
+          <SelectSeparator />
+          <SelectItem value="new">+ Someone new (no login needed)</SelectItem>
+        </SelectContent>
+      </Select>
+      <FieldError message={error} />
+      {value === "new" && (
+        <div className="mt-3 rounded-sm border-2 border-dashed p-3">
+          <p className="mb-2 text-xs text-muted-foreground">They'll be saved under Borrowers for next time.</p>
+          <BorrowerForm value={newPerson} onChange={onNewPerson} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SiteLabel({ required, children }) {
+  return required
+    ? <RequiredLabel>{children}</RequiredLabel>
+    : <Label className="text-xs font-black uppercase tracking-wider">{children} <span className="font-normal normal-case text-muted-foreground">(optional)</span></Label>;
+}
+
 function RequiredLabel({ children }) {
   return (
     <Label className="text-xs font-black uppercase tracking-wider">
@@ -282,6 +336,7 @@ export default function ToolDetail() {
   const [qrCode, setQrCode] = useState("");
   const [audit, setAudit] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [borrowers, setBorrowers] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -379,11 +434,12 @@ export default function ToolDetail() {
     setErrors({});
 
     try {
-      const [toolResult, qrResult, auditResult, usersResult] = await Promise.allSettled([
+      const [toolResult, qrResult, auditResult, usersResult, borrowersResult] = await Promise.allSettled([
         api.get(`/tools/${toolId}`),
         api.get(`/tools/${toolId}/qr`),
         api.get(`/audit/${toolId}`),
         api.get("/users"),
+        api.get("/borrowers"),
       ]);
 
       if (toolResult.status !== "fulfilled") {
@@ -394,6 +450,7 @@ export default function ToolDetail() {
       setQrCode(qrResult.status === "fulfilled" ? qrResult.value.data?.qr_code || "" : "");
       setAudit(auditResult.status === "fulfilled" && Array.isArray(auditResult.value.data) ? auditResult.value.data : []);
       setAllUsers(usersResult.status === "fulfilled" && Array.isArray(usersResult.value.data) ? usersResult.value.data : []);
+      setBorrowers(borrowersResult.status === "fulfilled" && Array.isArray(borrowersResult.value.data) ? borrowersResult.value.data : []);
     } catch (error) {
       toast.error(errorMessage(error, "Failed to load tool."));
       setTool(null);
@@ -430,6 +487,22 @@ export default function ToolDetail() {
   const activeUsers = useMemo(() => {
     return allUsers.filter((item) => item?.is_active !== false && item?.id !== user?.id);
   }, [allUsers, user?.id]);
+
+  // Personal plan: lending to a mate doesn't need job / site / site manager.
+  const isPersonal = (user?.workspace_access?.plan || user?.subscription?.plan) === "personal";
+  const siteFieldsRequired = (holder) => !isPersonal && !String(holder || "").startsWith("borrower:") && holder !== "new";
+
+  // Turns the picker choice into what the API wants; adds a new borrower first if needed.
+  const resolveHolder = async (choice, person) => {
+    if (choice === "new") {
+      const res = await api.post("/borrowers", { name: clean(person.name), phone: clean(person.phone), email: clean(person.email) });
+      setBorrowers((list) => [...list, res.data]);
+      return { borrower_id: res.data.id };
+    }
+    if (choice.startsWith("borrower:")) return { borrower_id: choice.slice(9) };
+    if (choice.startsWith("user:")) return { holder_user_id: choice.slice(5), next_holder_id: choice.slice(5) };
+    return {};
+  };
 
   const updateCheckout = (field, value) => {
     setCheckoutData((current) => ({ ...current, [field]: value }));
@@ -476,9 +549,13 @@ export default function ToolDetail() {
   const validateCheckout = () => {
     const nextErrors = {};
 
-    if (!clean(checkoutData.job_number)) nextErrors.checkout_job_number = "Job number is required.";
-    if (!clean(checkoutData.site)) nextErrors.checkout_site = "Site is required.";
-    if (!clean(checkoutData.site_manager)) nextErrors.checkout_site_manager = "Site manager is required.";
+    if (!checkoutData.holder) nextErrors.checkout_holder = "Choose who's taking it.";
+    if (checkoutData.holder === "new" && !clean(checkoutData.new_person.name)) nextErrors.checkout_holder = "Enter their name.";
+    if (siteFieldsRequired(checkoutData.holder)) {
+      if (!clean(checkoutData.job_number)) nextErrors.checkout_job_number = "Job number is required.";
+      if (!clean(checkoutData.site)) nextErrors.checkout_site = "Site is required.";
+      if (!clean(checkoutData.site_manager)) nextErrors.checkout_site_manager = "Site manager is required.";
+    }
     if (!checkoutData.expected_return_date) nextErrors.checkout_expected_return_date = "Expected return date is required.";
     if (checkoutData.expected_return_date && checkoutData.expected_return_date < todayDate()) {
       nextErrors.checkout_expected_return_date = "Expected return date cannot be in the past.";
@@ -492,8 +569,11 @@ export default function ToolDetail() {
     const nextErrors = {};
 
     if (!handoverData.next_holder_id) nextErrors.handover_next_holder_id = "Select the next holder.";
-    if (!clean(handoverData.job_number)) nextErrors.handover_job_number = "Job number is required.";
-    if (!clean(handoverData.site_manager)) nextErrors.handover_site_manager = "Site manager is required.";
+    if (handoverData.next_holder_id === "new" && !clean(handoverData.new_person.name)) nextErrors.handover_next_holder_id = "Enter their name.";
+    if (siteFieldsRequired(handoverData.next_holder_id)) {
+      if (!clean(handoverData.job_number)) nextErrors.handover_job_number = "Job number is required.";
+      if (!clean(handoverData.site_manager)) nextErrors.handover_site_manager = "Site manager is required.";
+    }
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -551,8 +631,12 @@ export default function ToolDetail() {
     setBusyAction("checkout");
 
     try {
+      const holder = await resolveHolder(checkoutData.holder, checkoutData.new_person);
+      if (holder.borrower_id && checkoutData.holder === "new") updateCheckout("holder", `borrower:${holder.borrower_id}`);
       await api.post("/checkout", {
         tool_id: toolId,
+        holder_user_id: holder.holder_user_id,
+        borrower_id: holder.borrower_id,
         job_number: clean(checkoutData.job_number),
         site: clean(checkoutData.site),
         site_manager: clean(checkoutData.site_manager),
@@ -596,9 +680,12 @@ export default function ToolDetail() {
     setBusyAction("handover");
 
     try {
+      const holder = await resolveHolder(handoverData.next_holder_id, handoverData.new_person);
+      if (holder.borrower_id && handoverData.next_holder_id === "new") updateHandover("next_holder_id", `borrower:${holder.borrower_id}`);
       await api.post("/handover", {
         tool_id: toolId,
-        next_holder_id: handoverData.next_holder_id,
+        next_holder_id: holder.next_holder_id,
+        borrower_id: holder.borrower_id,
         job_number: clean(handoverData.job_number),
         site_manager: clean(handoverData.site_manager),
         notes: clean(handoverData.notes),
@@ -745,8 +832,20 @@ export default function ToolDetail() {
                 </DialogHeader>
 
                 <div className="grid gap-3">
+                  <HolderPicker
+                    value={checkoutData.holder}
+                    onChange={(value) => updateCheckout("holder", value)}
+                    me={user}
+                    users={activeUsers}
+                    borrowers={borrowers}
+                    newPerson={checkoutData.new_person}
+                    onNewPerson={(value) => updateCheckout("new_person", value)}
+                    error={errors.checkout_holder}
+                    testId="checkout-holder"
+                  />
+
                   <div>
-                    <RequiredLabel>Job Number</RequiredLabel>
+                    <SiteLabel required={siteFieldsRequired(checkoutData.holder)}>Job Number</SiteLabel>
                     <Input
                       data-testid="checkout-job"
                       className="mt-1 rounded-none border-2"
@@ -757,7 +856,7 @@ export default function ToolDetail() {
                   </div>
 
                   <div>
-                    <RequiredLabel>Site</RequiredLabel>
+                    <SiteLabel required={siteFieldsRequired(checkoutData.holder)}>Site</SiteLabel>
                     <Input
                       data-testid="checkout-site"
                       className="mt-1 rounded-none border-2"
@@ -768,7 +867,7 @@ export default function ToolDetail() {
                   </div>
 
                   <div>
-                    <RequiredLabel>Site Manager</RequiredLabel>
+                    <SiteLabel required={siteFieldsRequired(checkoutData.holder)}>Site Manager</SiteLabel>
                     <Input
                       data-testid="checkout-manager"
                       className="mt-1 rounded-none border-2"
@@ -890,30 +989,20 @@ export default function ToolDetail() {
                   </DialogHeader>
 
                   <div className="grid gap-3">
-                    <div>
-                      <RequiredLabel>Hand To</RequiredLabel>
-                      <Select value={handoverData.next_holder_id} onValueChange={(value) => updateHandover("next_holder_id", value)}>
-                        <SelectTrigger className="mt-1 rounded-none border-2" data-testid="handover-user">
-                          <SelectValue placeholder="Select user" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {activeUsers.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {item.name} ({getUserRoleLabel(item.role)})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {activeUsers.length === 0 && (
-                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300" data-testid="handover-no-users">
-                          There's no one else in your team to hand this to yet. Add people under Users, then hand it over.
-                        </p>
-                      )}
-                      <FieldError message={errors.handover_next_holder_id} />
-                    </div>
+                    <HolderPicker
+                      value={handoverData.next_holder_id}
+                      onChange={(value) => updateHandover("next_holder_id", value)}
+                      users={tool.current_holder_id === user?.id ? activeUsers : [user, ...activeUsers].filter(Boolean)}
+                      borrowers={borrowers}
+                      excludeId={tool.current_holder_id}
+                      newPerson={handoverData.new_person}
+                      onNewPerson={(value) => updateHandover("new_person", value)}
+                      error={errors.handover_next_holder_id}
+                      testId="handover-user"
+                    />
 
                     <div>
-                      <RequiredLabel>Job Number</RequiredLabel>
+                      <SiteLabel required={siteFieldsRequired(handoverData.next_holder_id)}>Job Number</SiteLabel>
                       <Input
                         data-testid="handover-job"
                         className="mt-1 rounded-none border-2"
@@ -924,7 +1013,7 @@ export default function ToolDetail() {
                     </div>
 
                     <div>
-                      <RequiredLabel>Site Manager</RequiredLabel>
+                      <SiteLabel required={siteFieldsRequired(handoverData.next_holder_id)}>Site Manager</SiteLabel>
                       <Input
                         data-testid="handover-manager"
                         className="mt-1 rounded-none border-2"

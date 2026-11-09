@@ -21,6 +21,7 @@ import Notifications from "@/pages/Notifications";
 import Reports from "@/pages/Reports";
 import Categories from "@/pages/Categories";
 import CalendarPage from "@/pages/CalendarPage";
+import Borrowers from "@/pages/Borrowers";
 import QRScannerPage from "@/pages/QRScannerPage";
 
 function AcceptInvite() {
@@ -533,6 +534,7 @@ function AppRoutes() {
         <Route path="users" element={<UserManagement />} />
         <Route path="reports" element={<Reports />} />
         <Route path="categories" element={<Categories />} />
+        <Route path="borrowers" element={<Borrowers />} />
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="scan" element={<QRScannerPage />} />
         <Route path="settings" element={<Settings />} />
