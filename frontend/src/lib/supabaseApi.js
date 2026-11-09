@@ -240,7 +240,8 @@ function pickFields(body, fields) {
     if (body[f] === undefined) return;
     let v = body[f];
     if (DATE_FIELDS.has(f)) v = v ? dateOnly(v) : null;
-    else if (v === null && f !== "purchase_price") v = "";
+    else if (f === "purchase_price") v = v === "" || v === null ? null : Number(v);
+    else if (v === null) v = "";
     out[f] = v;
   });
   return out;
@@ -304,7 +305,11 @@ on("POST", "/auth/setup", async (_, body) => {
     email,
     password: body.password,
     options: {
-      data: { name: body.name, company_name: body.company_name || "", brand: body.brand || "long_line" },
+      data: {
+        name: body.name, company_name: body.company_name || "", brand: body.brand || "long_line",
+        // Record of agreeing to the terms at sign-up (version + time), kept with the login.
+        terms_version: body.terms_version || null, terms_accepted_at: body.terms_version ? new Date().toISOString() : null,
+      },
       emailRedirectTo: appLink("toolTracker", "/login"),
     },
   });

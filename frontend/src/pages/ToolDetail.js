@@ -10,6 +10,7 @@ import {
   FileText,
   ImageIcon,
   QrCode,
+  Pencil,
   Printer,
   RefreshCw,
   RotateCcw,
@@ -268,6 +269,94 @@ function EmptyPanel({ icon: Icon, title, description }) {
       <p className="text-sm font-bold">{title}</p>
       <p className="mt-1 max-w-sm text-xs text-muted-foreground">{description}</p>
     </div>
+  );
+}
+
+// Edit a tool's details after it's been added (fix a typo, add the serial, what it cost, etc.).
+const EDIT_FIELDS = ["asset_id", "description", "category", "model_name", "serial_number", "condition",
+  "safety_tag_expiry", "next_maintenance_date", "purchase_date", "purchase_price", "notes"];
+
+function EditToolDialog({ tool, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  const start = () => {
+    const next = {};
+    EDIT_FIELDS.forEach((f) => { next[f] = tool[f] === null || tool[f] === undefined ? "" : String(tool[f]).slice(0, f.endsWith("_date") || f.endsWith("_expiry") ? 10 : undefined); });
+    setForm(next);
+    setOpen(true);
+  };
+  const set = (f) => (e) => setForm((cur) => ({ ...cur, [f]: e.target.value }));
+
+  const save = async () => {
+    if (!form.asset_id.trim() || !form.description.trim()) { toast.error("Asset ID and description are needed."); return; }
+    setSaving(true);
+    try {
+      await api.put(`/tools/${tool.id}`, { ...form, asset_id: form.asset_id.trim(), description: form.description.trim() });
+      toast.success("Tool details saved");
+      setOpen(false);
+      await onSaved();
+    } catch (error) {
+      toast.error(errorMessage(error, "Couldn't save."));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field = (f, label, props = {}) => (
+    <div>
+      <Label className="text-xs font-black uppercase tracking-wider">{label}</Label>
+      <Input data-testid={`edit-${f}`} className="mt-1 rounded-none border-2" value={form[f] ?? ""} onChange={set(f)} {...props} />
+    </div>
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => (v ? start() : setOpen(false))}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="h-10 rounded-none border-2 text-xs font-black uppercase tracking-wider" data-testid="edit-tool-btn">
+          <Pencil size={14} className="mr-2" />
+          Edit Details
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto rounded-sm">
+        <DialogHeader>
+          <DialogTitle className="font-['Barlow_Condensed'] text-xl uppercase">Edit Tool Details</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">{field("asset_id", "Asset ID")}{field("category", "Category")}</div>
+          {field("description", "Description")}
+          <div className="grid grid-cols-2 gap-3">{field("model_name", "Model")}{field("serial_number", "Serial Number")}</div>
+          <div className="grid grid-cols-2 gap-3">
+            {field("purchase_date", "Purchase Date", { type: "date" })}
+            {field("purchase_price", "Price Paid ($)", { type: "number", min: "0", step: "0.01", inputMode: "decimal" })}
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {field("safety_tag_expiry", "Safety Tag Expiry", { type: "date" })}
+            {field("next_maintenance_date", "Next Maintenance", { type: "date" })}
+          </div>
+          <div>
+            <Label className="text-xs font-black uppercase tracking-wider">Condition</Label>
+            <Select value={form.condition || "good"} onValueChange={(v) => setForm((cur) => ({ ...cur, condition: v }))}>
+              <SelectTrigger className="mt-1 rounded-none border-2" data-testid="edit-condition"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="good">Good</SelectItem>
+                <SelectItem value="fair">Fair</SelectItem>
+                <SelectItem value="poor">Poor</SelectItem>
+                <SelectItem value="damaged">Damaged</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs font-black uppercase tracking-wider">Notes</Label>
+            <Textarea data-testid="edit-notes" className="mt-1 rounded-none border-2" rows={3} value={form.notes ?? ""} onChange={set("notes")} />
+          </div>
+          <Button onClick={save} disabled={saving} className="h-11 rounded-none bg-[hsl(38,92%,50%)] text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]" data-testid="save-tool-btn">
+            {saving ? "Saving..." : "Save Details"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1048,6 +1137,8 @@ export default function ToolDetail() {
             </>
           )}
 
+          {canManage && <EditToolDialog tool={tool} onSaved={reloadToolAndAudit} />}
+
           {canManage && (
             <Dialog open={showMaintenance} onOpenChange={(open) => (open ? setShowMaintenance(true) : resetMaintenance())}>
               <DialogTrigger asChild>
@@ -1190,6 +1281,8 @@ export default function ToolDetail() {
               <DetailItem label="Condition" value={tool.condition} danger={tool.condition === "damaged" || tool.condition === "poor"} />
               <DetailItem label="Safety Tag" value={formatDate(tool.safety_tag_expiry)} danger={isPastDate(tool.safety_tag_expiry)} />
               <DetailItem label="Next Maintenance" value={formatDate(tool.next_maintenance_date)} danger={isPastDate(tool.next_maintenance_date)} />
+              <DetailItem label="Purchased" value={formatDate(tool.purchase_date)} />
+              <DetailItem label="Price Paid" value={tool.purchase_price === null || tool.purchase_price === undefined || tool.purchase_price === "" ? "" : `$${Number(tool.purchase_price).toLocaleString("en-NZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
 
               {tool.notes && (
                 <div className="col-span-2 md:col-span-3">

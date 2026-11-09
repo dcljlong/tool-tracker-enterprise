@@ -1,5 +1,5 @@
 import "@/App.css";
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { ThemeProvider } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
@@ -22,6 +22,8 @@ import Reports from "@/pages/Reports";
 import Categories from "@/pages/Categories";
 import CalendarPage from "@/pages/CalendarPage";
 import Borrowers from "@/pages/Borrowers";
+import Welcome from "@/pages/Welcome";
+import { Terms, Privacy } from "@/pages/Legal";
 import QRScannerPage from "@/pages/QRScannerPage";
 
 function AcceptInvite() {
@@ -449,6 +451,7 @@ function ForcePasswordChange() {
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -458,7 +461,8 @@ function ProtectedRoute({ children }) {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  // Someone arriving at the front door sees the sales page; deep links still go to sign-in.
+  if (!user) return <Navigate to={location.pathname === "/" ? "/welcome" : "/login"} replace />;
   if (user?.force_password_change) return <ForcePasswordChange />;
   return children;
 }
@@ -515,6 +519,10 @@ function AppRoutes() {
         element={user ? <Navigate to="/" replace /> : <ResetPassword />}
       />
 
+      <Route path="/welcome" element={<Welcome />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
+
       <Route
         path="/login"
         element={user ? <Navigate to="/" replace /> : isFirstRun ? <Navigate to="/setup" replace /> : <Login />}
@@ -541,7 +549,7 @@ function AppRoutes() {
         <Route path="notifications" element={<Notifications />} />
       </Route>
 
-      <Route path="*" element={<Navigate to={isFirstRun ? "/setup" : user ? "/" : "/login"} replace />} />
+      <Route path="*" element={<Navigate to={isFirstRun ? "/setup" : user ? "/" : "/welcome"} replace />} />
     </Routes>
   );
 }

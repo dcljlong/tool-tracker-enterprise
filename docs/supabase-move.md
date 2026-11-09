@@ -168,3 +168,18 @@ Davy has to do (laptop, needs his logins):
   aren't rate-limited; add the real site to Redirect URLs.
 - Decide on terms of use and privacy page wording (Claude drafts, Davy approves).
 - A final hand test on the preview: lend a tool to someone new, return it, check Borrowers and Reports.
+
+## Part 6 start (10 Nov 2026) – sales page, terms, privacy, tool editing
+
+- `/welcome` public sales page (what it does, Free / Personal Plus / Crew prices from `PLAN_PRICES`, FAQ, Start free).
+  Logged-out visitors to `/` land here; deep links still go to sign-in.
+- `/terms` and `/privacy` (in `pages/Legal.js`) – **DRAFT** banner until Davy approves. To finish: legal name of the
+  business, support email, then set `DRAFT = false` and bump `TERMS_VERSION`. Data region stated as Sydney
+  (Supabase `ap-southeast-2`, checked). Privacy page promises backups and deletion within 90 days of closing –
+  backups still to be confirmed on the Supabase plan, and an account-closing flow still to build.
+- Sign-up now needs an "I agree to the Terms and Privacy Policy" tick; version and time are saved on the login
+  (`terms_version`, `terms_accepted_at` in user metadata).
+- **Edit Details** on the tool page (admin / site manager): asset ID, description, category, model, serial, purchase
+  date, price paid, tag / maintenance dates, condition, notes. Purchase date and price also on the add-tool form and
+  shown on the tool page (for insurance / police lists).
+- Domain to buy: longline.co.nz (main) + longlineworks.com (+ longline.nz optional).

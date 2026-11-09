@@ -37,7 +37,7 @@ export default function ToolCatalog() {
   const [categories, setCategories] = useState(defaultCategories);
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
-  const [newTool, setNewTool] = useState({ asset_id: "", description: "", category: "General", model_name: "", serial_number: "", condition: "good", safety_tag_expiry: "", next_maintenance_date: "", notes: "" });
+  const [newTool, setNewTool] = useState({ asset_id: "", description: "", category: "General", model_name: "", serial_number: "", condition: "good", safety_tag_expiry: "", next_maintenance_date: "", purchase_date: "", purchase_price: "", notes: "" });
   const [addLoading, setAddLoading] = useState(false);
   const [selectedTools, setSelectedTools] = useState([]);
   const [showBulkCheckout, setShowBulkCheckout] = useState(false);
@@ -69,7 +69,7 @@ export default function ToolCatalog() {
       await api.post('/tools', newTool);
       toast.success("Tool added");
       setShowAdd(false);
-      setNewTool({ asset_id: "", description: "", category: "General", model_name: "", serial_number: "", condition: "good", safety_tag_expiry: "", next_maintenance_date: "", notes: "" });
+      setNewTool({ asset_id: "", description: "", category: "General", model_name: "", serial_number: "", condition: "good", safety_tag_expiry: "", next_maintenance_date: "", purchase_date: "", purchase_price: "", notes: "" });
       fetchTools();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Failed to add tool");
@@ -221,6 +221,16 @@ export default function ToolCatalog() {
                       <div>
                         <Label className="text-xs uppercase tracking-wider font-bold">Next Maintenance</Label>
                         <Input data-testid="tool-maintenance-date" type="date" className="rounded-none border-2 mt-1" value={newTool.next_maintenance_date} onChange={e => setNewTool({...newTool, next_maintenance_date: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-xs uppercase tracking-wider font-bold">Purchase Date</Label>
+                        <Input data-testid="tool-purchase-date" type="date" className="rounded-none border-2 mt-1" value={newTool.purchase_date} onChange={e => setNewTool({...newTool, purchase_date: e.target.value})} />
+                      </div>
+                      <div>
+                        <Label className="text-xs uppercase tracking-wider font-bold">Price Paid ($)</Label>
+                        <Input data-testid="tool-purchase-price" type="number" min="0" step="0.01" inputMode="decimal" className="rounded-none border-2 mt-1" value={newTool.purchase_price} onChange={e => setNewTool({...newTool, purchase_price: e.target.value})} />
                       </div>
                     </div>
                     <div>

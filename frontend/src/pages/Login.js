@@ -158,7 +158,11 @@ export default function Login() {
         )}
 
         <p className="tt-login-footnote">
-          Built for construction tools, service records, handovers, and live asset visibility.
+          <a href="/welcome" style={{ textDecoration: "underline" }}>About &amp; pricing</a>
+          {" · "}
+          <a href="/terms" style={{ textDecoration: "underline" }}>Terms</a>
+          {" · "}
+          <a href="/privacy" style={{ textDecoration: "underline" }}>Privacy</a>
         </p>
       </main>
     </div>

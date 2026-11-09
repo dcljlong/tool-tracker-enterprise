@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import toolTrackerLogo from "@/assets/tool-tracker-logo.png";
+import { TERMS_VERSION } from "@/pages/Legal";
 
 const STEPS = [
   {
@@ -236,6 +237,7 @@ export default function SetupWizard({ onComplete, onStart }) {
     email: "",
     password: "",
     confirmPassword: "",
+    agreed: false,
   });
 
   const [companyData, setCompanyData] = useState({
@@ -292,6 +294,7 @@ export default function SetupWizard({ onComplete, onStart }) {
     else if (!isValidEmail(adminData.email)) nextErrors.email = "Enter a valid email address.";
     if (adminData.password.length < 6) nextErrors.password = "Password must be at least 6 characters.";
     if (adminData.password !== adminData.confirmPassword) nextErrors.confirmPassword = "Passwords do not match.";
+    if (!adminData.agreed) nextErrors.agreed = "Please tick to agree to the terms and privacy policy.";
 
     setErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -336,6 +339,7 @@ export default function SetupWizard({ onComplete, onStart }) {
         email: normaliseEmail(adminData.email),
         password: adminData.password,
         role: "admin",
+        terms_version: TERMS_VERSION,
       });
 
       toast.success("Admin account created");
@@ -486,6 +490,22 @@ export default function SetupWizard({ onComplete, onStart }) {
                 />
                 <FieldError message={errors.confirmPassword} />
               </div>
+            </div>
+
+            <div>
+              <label className="flex items-start gap-2 text-sm" data-testid="setup-agree">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-[hsl(38,92%,50%)]"
+                  checked={adminData.agreed}
+                  onChange={(event) => updateAdmin("agreed", event.target.checked)}
+                />
+                <span>
+                  I agree to the <a href="/terms" target="_blank" rel="noreferrer" className="underline">Terms of Use</a> and{" "}
+                  <a href="/privacy" target="_blank" rel="noreferrer" className="underline">Privacy Policy</a>.
+                </span>
+              </label>
+              <FieldError message={errors.agreed} />
             </div>
 
             <Button
