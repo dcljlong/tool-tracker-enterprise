@@ -904,6 +904,11 @@ export default function ToolDetail() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {activeUsers.length === 0 && (
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300" data-testid="handover-no-users">
+                          There's no one else in your team to hand this to yet. Add people under Users, then hand it over.
+                        </p>
+                      )}
                       <FieldError message={errors.handover_next_holder_id} />
                     </div>
 

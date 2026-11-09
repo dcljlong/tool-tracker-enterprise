@@ -130,3 +130,10 @@ Customer Portal: allow card update, cancel, invoice history; for crew allow quan
   Manage billing shows plan, card, invoices; Cancel subscription → cancel_at_period_end recorded. 7 webhook events, 0 errors.
 - Before live: decide the Stripe business name shown on checkout/portal (currently "Long Line Site-Day"), live prices,
   live portal config (`TT_STRIPE_PORTAL_CONFIG`), live webhook + keys, leaked-password protection, own email sender.
+
+### To do next (from Davy's preview test, 10 Nov)
+- Check-out works in the preview. Handover list was empty because the test account has one user - now says so.
+- **Borrowers screen missing:** personal plan needs "lend to a named person" (name + phone, no login). Database already has
+  `tt_borrowers` and `tt_hand_over(p_borrower)`; the screens don't use them yet. Build in part 5.
+- Later feature (after go-live): company branding on the Crew plan (logo, name, colour on screens, PDFs, QR labels, emails).
+- Stripe account public name and statement descriptor changed to **Long Line** (10 Nov). Domain not bought yet (pick: longlineworks.com).
