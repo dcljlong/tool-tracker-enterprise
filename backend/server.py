@@ -37,7 +37,12 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-JWT_SECRET = os.environ.get('JWT_SECRET', str(uuid.uuid4()))
+JWT_SECRET = os.environ.get('JWT_SECRET', '').strip()
+if not JWT_SECRET:
+    # Without a fixed secret every restart (and every worker) signs tokens differently and logs everyone out.
+    logging.getLogger(__name__).warning("JWT_SECRET is not set - using a temporary secret. Set it in the hosting environment.")
+    JWT_SECRET = secrets.token_urlsafe(48)
+ALLOWED_USER_ROLES = {"admin", "site_manager", "worker"}
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_HOURS = 24
 
@@ -355,23 +360,23 @@ async def get_current_user(token: str = None):
     token = token.replace("Bearer ", "")
     try:
         payload = decode_token(token)
-        user_id = payload.get("user_id")
-        if user_id:
-            user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
-            if user:
-                user["user_id"] = user.get("id")
-                user["company_id"] = normalise_company_id(user.get("company_id"))
-                user["company_name"] = user.get("company_name") or DEFAULT_COMPANY_NAME
-                user["force_password_change"] = bool(user.get("force_password_change", False))
-                user["email_verified"] = bool(user.get("email_verified", False))
-                user["workspace_access"] = await get_workspace_access_for_company(user["company_id"])
-                return user
-        payload["company_id"] = normalise_company_id(payload.get("company_id"))
-        payload["company_name"] = payload.get("company_name") or DEFAULT_COMPANY_NAME
-        payload["workspace_access"] = await get_workspace_access_for_company(payload["company_id"])
-        return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = payload.get("user_id")
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0}) if user_id else None
+    # A token only works while its user still exists and is active (leavers lose access straight away).
+    if not user or not user.get("is_active", True):
+        raise HTTPException(status_code=401, detail="Account no longer active")
+    try:
+        user["user_id"] = user.get("id")
+        user["company_id"] = normalise_company_id(user.get("company_id"))
+        user["company_name"] = user.get("company_name") or DEFAULT_COMPANY_NAME
+        user["force_password_change"] = bool(user.get("force_password_change", False))
+        user["email_verified"] = bool(user.get("email_verified", False))
+        user["workspace_access"] = await get_workspace_access_for_company(user["company_id"])
+        return user
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -830,6 +835,10 @@ async def invite_user(user: UserInvite, current_user: dict = Depends(auth_depend
 async def create_user(user: UserCreate, current_user: dict = Depends(auth_dependency)):
     if current_user["role"] not in ["admin", "site_manager"]:
         raise HTTPException(status_code=403, detail="Insufficient permissions")
+    if user.role not in ALLOWED_USER_ROLES:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    if current_user["role"] != "admin" and user.role != "worker":
+        raise HTTPException(status_code=403, detail="Site managers can only add workers")
     existing = await db.users.find_one({"email": user.email.lower().strip()})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -859,6 +868,18 @@ async def update_user(user_id: str, update: UserUpdate, current_user: dict = Dep
     update_dict = {k: v for k, v in update.model_dump().items() if v is not None}
     for protected_field in ("company_id", "company_name", "password"):
         update_dict.pop(protected_field, None)
+    if "role" in update_dict:
+        if current_user["role"] != "admin":
+            raise HTTPException(status_code=403, detail="Only an admin can change roles")
+        if update_dict["role"] not in ALLOWED_USER_ROLES:
+            raise HTTPException(status_code=400, detail="Invalid role")
+        if user_id == current_user["user_id"] and update_dict["role"] != "admin":
+            raise HTTPException(status_code=400, detail="You can't remove your own admin role")
+    if "email" in update_dict:
+        update_dict["email"] = update_dict["email"].lower().strip()
+        clash = await db.users.find_one({"email": update_dict["email"], "id": {"$ne": user_id}}, {"_id": 0, "id": 1})
+        if clash:
+            raise HTTPException(status_code=400, detail="Email already registered")
     if not update_dict:
         raise HTTPException(status_code=400, detail="No fields to update")
     user_query = company_filter(current_user, {"id": user_id})
