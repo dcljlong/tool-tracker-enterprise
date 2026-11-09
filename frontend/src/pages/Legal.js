@@ -10,7 +10,7 @@ const LEGAL = {
   product: "Long Line Tool Tracker",
   business: "Long Line",
   operator: "[legal name of the business or sole trader - to confirm]",
-  contactEmail: "[support email - to set up with the domain]",
+  contactEmail: "support@longline.co.nz",
   updated: "10 November 2026",
 };
 
