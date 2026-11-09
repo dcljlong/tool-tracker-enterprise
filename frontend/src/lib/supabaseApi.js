@@ -25,7 +25,7 @@ const fail = (status, detail) => {
 };
 
 const friendly = (message = "") => {
-  if (/row-level security|permission denied/i.test(message)) return "You don't have permission to do that (or the trial has ended).";
+  if (/row-level security|permission denied/i.test(message)) return "You don't have permission to do that (or the trial has ended - see Settings, Plan & billing).";
   if (/duplicate key.*asset/i.test(message)) return "Asset ID already exists";
   if (/duplicate key.*categor/i.test(message)) return "Category already exists";
   return message || "Something went wrong";
@@ -61,7 +61,7 @@ async function context({ create = true } = {}) {
   if (cachedContext && cachedContext.user.id === user.id) return cachedContext;
 
   let members = check(await supabase.from("tt_members")
-    .select("company_id, name, role, email, is_active, tt_companies(id, name, brand, tt_subscriptions(plan, status, trial_ends_at, seat_limit, current_period_end, cancel_at_period_end))")
+    .select("company_id, name, role, email, is_active, tt_companies(id, name, brand, tt_subscriptions(plan, status, trial_ends_at, seat_limit, extra_seats, price_lookup_key, provider_customer_id, current_period_end, cancel_at_period_end))")
     .eq("user_id", user.id).eq("is_active", true));
 
   if (!members.length && create) {
@@ -85,10 +85,15 @@ async function context({ create = true } = {}) {
   return cachedContext;
 }
 
-function subscriptionActive(sub) {
+function subscriptionPaid(sub) {
   if (!sub || !sub.status) return false;
   if (["active", "past_due", "complimentary", "beta"].includes(sub.status)) return true;
   return sub.status === "trial" && new Date(sub.trial_ends_at) > new Date();
+}
+
+// Personal accounts never lock: unpaid they drop to the free tier (25 tools, enforced in the database).
+function subscriptionActive(sub) {
+  return subscriptionPaid(sub) || sub?.plan === "personal";
 }
 
 function meShape(ctx) {
@@ -108,7 +113,7 @@ function meShape(ctx) {
     subscription,
     workspace_access: {
       access_status: subscriptionActive(subscription) ? "active" : "expired",
-      access_type: subscription.status,
+      access_type: subscription.plan === "personal" && !subscriptionPaid(subscription) ? "free" : subscription.status,
       plan: subscription.plan,
       trial_ends_at: subscription.trial_ends_at,
     },
@@ -230,7 +235,11 @@ function pickFields(body, fields) {
 }
 
 async function callTeamFunction(payload) {
-  const { data, error } = await supabase.functions.invoke("tt-team", { body: payload });
+  return callFunction("tt-team", payload);
+}
+
+async function callFunction(name, payload) {
+  const { data, error } = await supabase.functions.invoke(name, { body: payload });
   if (error) {
     let detail = error.message;
     try { detail = (await error.context.json()).detail || detail; } catch { /* keep message */ }
@@ -257,6 +266,18 @@ const on = (method, pattern, handler) => routes.push({ method, re: new RegExp(`^
 on("GET", "/setup/check", async () => ({ is_first_run: false }));
 
 on("GET", "/auth/me", async () => meShape(await context()));
+
+// ---- billing (Stripe, via the tt-billing edge function; admins only) ----
+on("POST", "/billing/checkout", async (_, body) => {
+  const ctx = await context();
+  return callFunction("tt-billing", { action: "checkout", company_id: ctx.companyId, plan: body.plan, extra_seats: body.extra_seats || 0 });
+});
+on("POST", "/billing/portal", async () => {
+  const ctx = await context();
+  return callFunction("tt-billing", { action: "portal", company_id: ctx.companyId });
+});
+// After returning from Stripe the plan may have changed: drop the cached context so /auth/me re-reads it.
+on("POST", "/billing/refresh", async () => { cachedContext = null; return meShape(await context()); });
 
 on("POST", "/auth/login", async (_, body) => {
   check(await supabase.auth.signInWithPassword({ email: (body.email || "").trim().toLowerCase(), password: body.password }), 401);
@@ -422,7 +443,7 @@ async function checkOut(ctx, body) {
     site_manager: body.site_manager || "",
     expected_return_date: dateOnly(body.expected_return_date),
     notes: body.notes || "",
-  }).select("*, tt_tools(asset_id, description)").single());
+  }).select("*, tt_tools:tt_tools!tt_checkouts_company_id_tool_id_fkey(asset_id, description)").single());
   return checkoutShape(row);
 }
 
@@ -453,7 +474,7 @@ on("POST", "/handover", async (_, body) => {
     p_site_manager: body.site_manager ?? null,
     p_notes: body.notes || "",
   }));
-  const row = check(await supabase.from("tt_checkouts").select("*, tt_tools(asset_id, description)").eq("id", newId).single());
+  const row = check(await supabase.from("tt_checkouts").select("*, tt_tools:tt_tools!tt_checkouts_company_id_tool_id_fkey(asset_id, description)").eq("id", newId).single());
   return { ...checkoutShape(row), to_user_name: row.holder_name, status: "completed" };
 });
 
@@ -482,7 +503,7 @@ on("POST", "/bulk-return", async (_, body) => {
 
 on("GET", "/checkouts", async (_, __, params = {}) => {
   const ctx = await context();
-  let q = supabase.from("tt_checkouts").select("*, tt_tools(asset_id, description)").eq("company_id", ctx.companyId);
+  let q = supabase.from("tt_checkouts").select("*, tt_tools:tt_tools!tt_checkouts_company_id_tool_id_fkey(asset_id, description)").eq("company_id", ctx.companyId);
   if (params.status) q = q.eq("status", params.status);
   if (params.tool_id) q = q.eq("tool_id", params.tool_id);
   return check(await q.order("checked_out_at", { ascending: false }).limit(1000)).map((r) => checkoutShape(r));
@@ -533,7 +554,7 @@ async function companyTools(ctx) {
 }
 
 async function activeCheckouts(ctx) {
-  return check(await supabase.from("tt_checkouts").select("*, tt_tools(asset_id, description)")
+  return check(await supabase.from("tt_checkouts").select("*, tt_tools:tt_tools!tt_checkouts_company_id_tool_id_fkey(asset_id, description)")
     .eq("company_id", ctx.companyId).eq("status", "active").limit(5000)).map((r) => checkoutShape(r));
 }
 
@@ -730,7 +751,7 @@ on("POST", "/certificates/([^/]+)/document", async ([id], form) => {
 async function periodData(ctx, days) {
   const since = daysAgoIso(days);
   const [checkouts, maint] = await Promise.all([
-    supabase.from("tt_checkouts").select("*, tt_tools(asset_id, description)").eq("company_id", ctx.companyId).gte("checked_out_at", since).limit(5000).then((r) => check(r).map((c) => checkoutShape(c))),
+    supabase.from("tt_checkouts").select("*, tt_tools:tt_tools!tt_checkouts_company_id_tool_id_fkey(asset_id, description)").eq("company_id", ctx.companyId).gte("checked_out_at", since).limit(5000).then((r) => check(r).map((c) => checkoutShape(c))),
     supabase.from("tt_maintenance").select("*").eq("company_id", ctx.companyId).gte("performed_at", since).limit(5000).then((r) => check(r).map((m) => ({ ...m, timestamp: m.performed_at }))),
   ]);
   const handovers = checkouts.filter((c) => c.handed_over_from).map((c) => ({ ...c, timestamp: c.checked_out_at, to_user_name: c.holder_name }));

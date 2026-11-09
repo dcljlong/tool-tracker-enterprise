@@ -144,6 +144,64 @@ select pg_temp.ok('B cannot see A files', (select count(*) from storage.objects)
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000ff');
 select pg_temp.ok('Stranger sees no companies', (select count(*) from public.tt_companies) = 0);
 
+-- 12. Billing: free personal tier (25 tools), paid plans, server-only billing state
+-- (each change runs in its own statement, then the result is checked in the next one)
+reset role;
+insert into auth.users (id, email) values ('00000000-0000-0000-0000-0000000000c1', 'solo@x.co');
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
+create temp table idsc as select public.tt_create_company('Solo', 'Solo Sam') as c;
+reset role;
+grant select on idsc to public;
+create temp table step (k text primary key, err text);
+grant all on step to public;
+create or replace function pg_temp.run(k text, q text) returns void language sql as
+$$ insert into step values (k, pg_temp.try(q)) $$;
+create or replace function pg_temp.err(k text) returns text language sql as $$ select err from step where step.k = $1 $$;
+create or replace function pg_temp.add_tool(k text, asset text) returns void language sql as
+$$ select pg_temp.run(k, format('insert into public.tt_tools (company_id, asset_id, description) values (%L, %L, ''x'')', (select c from idsc), asset)) $$;
+
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
+select pg_temp.run('trial30', format('insert into public.tt_tools (company_id, asset_id, description) select %L, ''S-''||g, ''tool'' from generate_series(1,30) g', (select c from idsc)));
+select pg_temp.ok('Trial: can add 30 tools', pg_temp.err('trial30') is null and (select count(*) from public.tt_tools) = 30, pg_temp.err('trial30'));
+reset role;
+update public.tt_subscriptions set trial_ends_at = now() - interval '1 day' where company_id = (select c from idsc);
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
+select pg_temp.add_tool('over', 'S-99');
+select pg_temp.ok('Free tier: over 25 tools, cannot add more', pg_temp.err('over') like '%free plan holds up to 25%', pg_temp.err('over'));
+select pg_temp.run('edit', 'update public.tt_tools set description = ''edited'' where asset_id = ''S-1''');
+select pg_temp.ok('Free tier: can still edit', pg_temp.err('edit') is null and (select description from public.tt_tools where asset_id = 'S-1') = 'edited', pg_temp.err('edit'));
+select pg_temp.run('co', format('insert into public.tt_checkouts (company_id, tool_id, holder_user_id, holder_name) select company_id, id, %L, ''x'' from public.tt_tools where asset_id = ''S-2''', '00000000-0000-0000-0000-0000000000c1'));
+select pg_temp.ok('Free tier: can still check out', pg_temp.err('co') is null
+  and (select count(*) from public.tt_checkouts c join public.tt_tools t on t.id = c.tool_id where t.asset_id = 'S-2') = 1, pg_temp.err('co'));
+select pg_temp.run('arch', 'update public.tt_tools set archived_at = now() where asset_id in (select ''S-''||g from generate_series(25,30) g)');
+select pg_temp.add_tool('add25', 'S-50');
+select pg_temp.ok('Free tier: archive down to 24 then add one', pg_temp.err('arch') is null and pg_temp.err('add25') is null
+  and (select count(*) from public.tt_tools where archived_at is null) = 25, coalesce(pg_temp.err('arch'), pg_temp.err('add25')));
+select pg_temp.add_tool('add26', 'S-51');
+select pg_temp.ok('Free tier: 26th tool blocked', pg_temp.err('add26') is not null);
+select pg_temp.run('restore', 'update public.tt_tools set archived_at = null where asset_id = ''S-30''');
+select pg_temp.ok('Free tier: restoring an archived tool over the limit blocked', pg_temp.err('restore') is not null);
+select pg_temp.run('selfpay', 'update public.tt_subscriptions set status = ''active''');
+select pg_temp.ok('User cannot make themselves paid', (select status from public.tt_subscriptions where company_id = (select c from idsc)) = 'trial');
+select pg_temp.run('evt', 'insert into public.tt_billing_events (event_id, event_type) values (''evt_x'', ''x'')');
+select pg_temp.ok('User cannot write billing events', pg_temp.err('evt') is not null);
+reset role;
+update public.tt_subscriptions set status = 'active' where company_id = (select c from idsc);
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
+select pg_temp.add_tool('plus', 'S-51');
+select pg_temp.ok('Personal Plus: unlimited tools', pg_temp.err('plus') is null, pg_temp.err('plus'));
+reset role;
+update public.tt_subscriptions set status = 'canceled' where company_id = (select c from idsc);
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000c1');
+select pg_temp.run('cedit', 'update public.tt_tools set description = ''still mine'' where asset_id = ''S-3''');
+select pg_temp.add_tool('cadd', 'S-52');
+select pg_temp.ok('Cancelled personal: records kept and editable', (select count(*) from public.tt_tools) = 32 and pg_temp.err('cedit') is null
+  and (select description from public.tt_tools where asset_id = 'S-3') = 'still mine', pg_temp.err('cedit'));
+select pg_temp.ok('Cancelled personal: back on the 25-tool limit', pg_temp.err('cadd') is not null);
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.run('btrial', format('insert into public.tt_tools (company_id, asset_id, description) select %L, ''B-''||g, ''x'' from generate_series(1,26) g', (select b from idsb)));
+select pg_temp.ok('Other company in trial: no tool limit', pg_temp.err('btrial') is null, pg_temp.err('btrial'));
+
 reset role;
 \set QUIET off
 select n, case when pass then 'ok' else 'FAIL' end as result, test, detail from results order by n;

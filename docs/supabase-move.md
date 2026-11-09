@@ -11,7 +11,7 @@ Goal: retire the Emergent FastAPI + MongoDB server. The tool tracker runs on the
 | 1 | Database tables, company separation (RLS), private photo/PDF storage | **Done 9 Nov 2026** – applied to Site-Day project |
 | 2 | Sign-up and login (Supabase Auth, shared with Site-Day) | **Built 10 Nov** – on branch preview, needs Davy's sign-in test |
 | 3 | Switch the screens from the FastAPI server to Supabase (12 pages, ~50 API calls) | **Built 10 Nov** – `frontend/src/lib/supabaseApi.js` |
-| 4 | Stripe: checkout, customer portal, webhook → `tt_subscriptions` | After 3 |
+| 4 | Stripe: checkout, customer portal, webhook → `tt_subscriptions` | **Code + tests done 10 Nov**; billing migration applied; functions not deployed until a Stripe sandbox is connected |
 | 5 | Invite team members (edge function, service role, seat limit) | **Built 10 Nov** – `tt-team` edge function deployed |
 | 6 | Reminders (tag expiry, overdue returns) – scheduled edge function | After 4 |
 | 7 | Copy live data from MongoDB + photos/PDFs into Supabase, then switch off Emergent | Last |
@@ -93,3 +93,25 @@ All app addresses live in `frontend/src/lib/siteConfig.js`. When the domain is b
   it after testing.
 - Supabase Auth needs, from the dashboard: Redirect URL `https://*-dcljlongs-projects.vercel.app/**` for previews;
   leaked-password protection on; custom SMTP before launch (the built-in sender is rate-limited and for testing only).
+
+## Step 4 – Stripe (10 Nov 2026)
+
+- Fixed from Davy's preview test: check-outs, history, reports and handover all failed (ambiguous tools↔check-outs link,
+  PostgREST error PGRST201). Now named explicitly. `tests/supabase/check_app_queries.py` runs every app query plus
+  check-out → handover → return against a local PostgREST.
+- Migration `20261110090000_tool_tracker_billing.sql` (applied to live 10 Nov): free personal tier (25 active tools,
+  never locked, records kept), Personal Plus/crew unlimited, extra seats, Stripe ids unique per company.
+  53 database checks pass.
+- Edge functions (written, tested, **not yet deployed**):
+  - `tt-billing` (verify_jwt on): admin-only Checkout and Customer Portal. Prices found by lookup key.
+  - `tt-stripe-webhook` (verify_jwt **off**, checks the Stripe signature): re-reads each subscription from Stripe,
+    ignores Site-Day subscriptions, blocks cross-company upgrades, Personal Plus → Crew cancels the old sub with credit.
+  - 13 unit tests: `deno test supabase/functions/_shared/tt_billing_test.ts`.
+- App: Settings → Plan & billing card; banner shows Free / trial / active / ended.
+
+Stripe lookup keys (create in the sandbox, NZD, monthly/yearly recurring):
+`tt_personal_plus_month` 4.99, `tt_personal_plus_year` 49, `tt_crew_month` 49, `tt_crew_extra_seat_month` 8.
+
+Secrets (Supabase > Edge Functions > Secrets): `TT_STRIPE_SECRET_KEY`, `TT_STRIPE_WEBHOOK_SECRET`, `TT_ALLOWED_ORIGINS`.
+Webhook events: checkout.session.completed, customer.subscription.created/updated/deleted, invoice.paid, invoice.payment_failed.
+Customer Portal: allow card update, cancel, invoice history; for crew allow quantity changes on the extra-seat price.

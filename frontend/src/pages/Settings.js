@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import BillingCard from "@/components/BillingCard";
 import { Mail, Bell, Building, Send, LayoutDashboard, SlidersHorizontal, RotateCcw, Save } from "lucide-react";
 
 const DASHBOARD_LAYOUT_STORAGE_KEY = "tool_tracker_dashboard_layout_v1";
@@ -173,6 +174,8 @@ export default function Settings() {
         <h1 className="font-['Barlow_Condensed'] text-3xl md:text-4xl font-black uppercase tracking-[0.08em] text-slate-950 dark:text-slate-50">Settings</h1>
         <p className="mt-1 text-sm font-medium text-slate-600 dark:text-slate-300">Configure your tool tracking system</p>
       </div>
+
+      <BillingCard initial={user?.subscription} />
 
       {/* Company */}
       <Card className="rounded-[1.35rem] border border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,0.08)] dark:border-[rgba(245,190,80,0.24)] dark:bg-[radial-gradient(circle_at_top_left,rgba(245,190,80,0.10),transparent_38%),linear-gradient(135deg,#020617,#0f172a_64%,#111827)] dark:text-slate-50 dark:shadow-[0_20px_54px_rgba(15,23,42,0.16)]">

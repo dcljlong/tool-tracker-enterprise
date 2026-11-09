@@ -192,7 +192,7 @@ function getAccessBannerConfig(access = {}) {
       toneClass: "border-rose-500/35 bg-rose-500/10 text-rose-950 dark:text-rose-100",
       badgeClass: "border-rose-500/30 bg-rose-500/15 text-rose-700 dark:text-rose-300",
       title: "Workspace access needs attention",
-      message: access.access_block_reason || `Workspace access is ${formatAccessText(accessStatus).toLowerCase()}.`,
+      message: access.access_block_reason || "Your trial or plan has ended. You can still view and export everything. An admin can choose a plan in Settings, under Plan & billing.",
     };
   }
 
@@ -201,7 +201,25 @@ function getAccessBannerConfig(access = {}) {
       toneClass: "border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100",
       badgeClass: "border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300",
       title: `${formatAccessText(accessType)} access active`,
-      message: "Access is managed by Long Line Suite support.",
+      message: "Choose a plan any time in Settings, under Plan & billing.",
+    };
+  }
+
+  if (accessType === "free") {
+    return {
+      toneClass: "border-sky-500/35 bg-sky-500/10 text-sky-950 dark:text-sky-100",
+      badgeClass: "border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-300",
+      title: "Free plan",
+      message: "Up to 25 tools. Personal Plus gives unlimited tools - see Settings, under Plan & billing.",
+    };
+  }
+
+  if (accessType === "active") {
+    return {
+      toneClass: "border-emerald-500/35 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100",
+      badgeClass: "border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+      title: "Plan active",
+      message: "Billing is in Settings, under Plan & billing.",
     };
   }
 
