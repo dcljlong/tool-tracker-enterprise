@@ -126,4 +126,7 @@ Customer Portal: allow card update, cancel, invoice history; for crew allow quan
 - Edge functions deployed: `tt-billing` (v1, verify_jwt on), `tt-stripe-webhook` (v1, verify_jwt off).
 - End-to-end test (API-driven, test card): subscribe → company on Personal Plus active with period end; cancel at period end →
   flag set; cancel now → back to free tier. 4 webhook events, all processed, no errors. Test customer `cus_Vb8lxNq0plc5Zt`.
-- Still to test by hand in the preview: the Plan & billing buttons (Stripe Checkout page) and Manage billing.
+- Davy's hand test in the preview (10 Nov, 06:40): Plan & billing → Stripe Checkout (test card) → Personal Plus active;
+  Manage billing shows plan, card, invoices; Cancel subscription → cancel_at_period_end recorded. 7 webhook events, 0 errors.
+- Before live: decide the Stripe business name shown on checkout/portal (currently "Long Line Site-Day"), live prices,
+  live portal config (`TT_STRIPE_PORTAL_CONFIG`), live webhook + keys, leaked-password protection, own email sender.
