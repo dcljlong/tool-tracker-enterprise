@@ -62,9 +62,14 @@ Stripe account: **Long Line Site-Day** (`acct_1RfsPPLb1OAiQ1Mf`, live). It only 
   `tt_subscriptions` (plan, status, seat_limit, period end). Same shape as Site-Day's `site_day_entitlements`.
 - Prices in NZD, GST-inclusive display.
 
-## Decisions for Davy
+## Decisions (9 Nov 2026 – Davy went with Claude's recommendations; starting points, easy to change in Stripe)
 
-1. Prices: personal (free tier + cheap paid?) and crew (per company or per user?).
-2. Trial length (currently 14 days, same as Site-Day).
-3. Free personal tier limits (e.g. 25 tools, no team logins) or paid only.
-4. Turn on leaked-password protection in Supabase Auth settings before public sign-up opens.
+- Hosting: tool tracker website moves to Davy's **own** Cloudflare account (Pages), free `.pages.dev` address
+  for now; buy a domain when ready to sell. Move only after the screens are on Supabase (step 3).
+  Deploys are manual only – no auto-publish on push, preview deploys off.
+- Orders unLimited and Safety unLimited stay on Vercel for now.
+- Personal plan: **free up to 25 tools**; Personal Plus **NZ$4.99/month or NZ$49/year** for unlimited tools.
+- Crew plan: **NZ$49/month per company including 5 users**, **NZ$8/month per extra user**
+  (cheaper than ShareMyToolbox's ~US$100/month for 5 users). Site-Day add-on discount to decide later.
+- Trial: 14 days (same as Site-Day).
+- Still to do from the laptop: Stripe sandbox test keys; turn on leaked-password protection in Supabase Auth.
