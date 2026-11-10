@@ -9,7 +9,7 @@ const DRAFT = true;
 const LEGAL = {
   product: "Long Line Tool Tracker",
   business: "Long Line",
-  operator: "[legal name of the business or sole trader - to confirm]",
+  operator: "David Christopher Long, a sole trader",
   contactEmail: "support@longline.co.nz",
   updated: "10 November 2026",
 };
@@ -80,7 +80,8 @@ export function Terms() {
       </p>
       <p>
         If you add other people's details (for example a borrower's name and phone number), you're responsible for having a
-        good reason to record them and for telling them if they ask.
+        good reason to record them and for letting them know their details are recorded, why, and who to contact about
+        them (Privacy Act 2020, IPP 3A). We hold those details on your behalf.
       </p>
 
       <h2>5. Fair use</h2>
@@ -142,7 +143,7 @@ export function Privacy() {
       <p>
         Only to run the service for you: logging you in, storing your records, sending reminders and account emails, taking
         payment, keeping things secure and fixing problems. We don't sell personal information, and we don't use it for
-        advertising.
+        advertising. We only send marketing emails if you've agreed to them, and every one has an unsubscribe link.
       </p>
 
       <h2>Who we share it with</h2>
