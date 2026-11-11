@@ -4,11 +4,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 
-const ALLOWED_ORIGINS = (Deno.env.get("TT_ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
+// The live addresses are built in; TT_ALLOWED_ORIGINS (comma-separated) can add more without a code change.
+const LIVE_ORIGINS = ["https://tools.longline.co.nz", "https://tool-tracker-enterprise.vercel.app"];
+const ALLOWED_ORIGINS = [...LIVE_ORIGINS, ...(Deno.env.get("TT_ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean)];
+// Vercel previews of this project (same rule as tt-billing), so testing still works once the real address is locked in.
+const PREVIEW_ORIGIN = /^https:\/\/tool-tracker-enterprise-[a-z0-9-]+-dcljlongs-projects\.vercel\.app$/;
 
 function cors(req: Request) {
   const origin = req.headers.get("Origin") || "";
-  const allow = !ALLOWED_ORIGINS.length || ALLOWED_ORIGINS.includes(origin) ? origin || "*" : ALLOWED_ORIGINS[0];
+  const ok = !ALLOWED_ORIGINS.length || ALLOWED_ORIGINS.includes(origin) || PREVIEW_ORIGIN.test(origin);
+  const allow = ok ? origin || "*" : ALLOWED_ORIGINS[0];
   return {
     "Access-Control-Allow-Origin": allow,
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

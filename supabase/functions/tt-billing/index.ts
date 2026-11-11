@@ -7,7 +7,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import { checkoutLineKeys, stripeForm } from "../_shared/tt_billing.ts";
 
-const ALLOWED_ORIGINS = (Deno.env.get("TT_ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean);
+// The live addresses are built in; TT_ALLOWED_ORIGINS (comma-separated) can add more without a code change.
+const LIVE_ORIGINS = ["https://tools.longline.co.nz", "https://tool-tracker-enterprise.vercel.app"];
+const ALLOWED_ORIGINS = [...LIVE_ORIGINS, ...(Deno.env.get("TT_ALLOWED_ORIGINS") || "").split(",").map((s) => s.trim()).filter(Boolean)];
 // Vercel previews of this project, used while testing before the real domain exists.
 const PREVIEW_ORIGIN = /^https:\/\/tool-tracker-enterprise-[a-z0-9-]+-dcljlongs-projects\.vercel\.app$/;
 

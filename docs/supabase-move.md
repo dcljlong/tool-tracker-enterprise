@@ -183,3 +183,19 @@ Davy has to do (laptop, needs his logins):
   date, price paid, tag / maintenance dates, condition, notes. Purchase date and price also on the add-tool form and
   shown on the tool page (for insurance / police lists).
 - Domain to buy: longline.co.nz (main) + longlineworks.com (+ longline.nz optional).
+
+## Live – 12 Nov 2026 (off Emergent)
+
+- Davy: nothing in the old Emergent version needs keeping, so no data copy. Production now runs the Supabase version.
+- `supabase/move-part-1` fast-forwarded into the production branch `long-line-tool-tracker-v1` (Vercel production deploy).
+- Vercel production env: `REACT_APP_SUPABASE_URL` + `REACT_APP_SUPABASE_PUBLISHABLE_KEY` added (the app uses Supabase
+  whenever these are set; the old `REACT_APP_BACKEND_URL` is ignored and can be deleted).
+- Domain **tools.longline.co.nz**: added to the Vercel project; Cloudflare CNAME `tools` → Vercel (DNS only), made with
+  the Cloudflare key in Davy's laptop `Documents\Site-Day\_keys\keys.txt`.
+- `tt-team` and `tt-billing`: the live addresses (tools.longline.co.nz, tool-tracker-enterprise.vercel.app) are built in,
+  Vercel previews still allowed; `TT_ALLOWED_ORIGINS` secret not needed (can add extra addresses). Deployed v4 of both.
+- Still Davy (Supabase dashboard, shared with Site-Day – add, don't replace): Auth → URL Configuration → Redirect URLs add
+  `https://tools.longline.co.nz/**`; leaked-password protection on; custom SMTP (Resend, longline.co.nz already verified).
+- Still to do: Stripe live (products/prices with the same lookup keys, live portal config, live webhook, live keys),
+  delete the test login `tt-test-owner@longline.invalid` and test Stripe customer, turn Emergent off (Davy, in Emergent –
+  no credits to be spent), terms/privacy DRAFT banner off once Davy approves the wording.
