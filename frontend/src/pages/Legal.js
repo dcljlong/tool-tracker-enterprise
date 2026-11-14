@@ -61,7 +61,7 @@ export function Terms() {
       <h2>2. Plans, trial and payment</h2>
       <li>New accounts get a 14-day trial with unlimited tools.</li>
       <li>After the trial, personal accounts drop to the free plan (up to {FREE_TOOL_LIMIT} tools) unless you upgrade. Nothing is deleted.</li>
-      <li>Paid plans: Personal Plus {PLAN_PRICES.personal_plus_month} or {PLAN_PRICES.personal_plus_year}; Crew {PLAN_PRICES.crew_month}, plus {PLAN_PRICES.crew_extra_seat}. Prices are in NZ dollars and include GST.</li>
+      <li>Paid plans: Personal Plus {PLAN_PRICES.personal_plus_month} or {PLAN_PRICES.personal_plus_year}; Crew {PLAN_PRICES.crew_month}, plus {PLAN_PRICES.crew_extra_seat}. Prices are in NZ dollars. Long Line is not GST registered, so no GST is charged.</li>
       <li>Paid plans renew automatically each month or year until you cancel. Card payments are handled by Stripe; we never see or store your full card number.</li>
       <li>You can cancel any time in Settings, under Plan &amp; billing. Your plan stays active until the end of the period you've paid for. We don't give part refunds for unused time, except where the law requires it.</li>
       <li>We'll give you at least 30 days' notice of any price change, by email or in the app.</li>

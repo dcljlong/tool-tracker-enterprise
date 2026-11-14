@@ -84,7 +84,7 @@ export default function Welcome() {
       <section id="pricing" className="border-y bg-white">
         <div className="mx-auto max-w-6xl px-5 py-16">
           <h2 className="font-['Barlow_Condensed'] text-3xl font-black uppercase">Pricing</h2>
-          <p className="mt-1 text-slate-600">NZ dollars, GST included. Cancel any time - your records stay.</p>
+          <p className="mt-1 text-slate-600">NZ dollars. Cancel any time - your records stay.</p>
           <div className="mt-6 grid gap-5 md:grid-cols-3">
             <Plan
               name="Free"
