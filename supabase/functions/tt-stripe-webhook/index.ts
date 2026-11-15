@@ -4,12 +4,14 @@
 // Secrets (Supabase dashboard > Edge Functions > Secrets):
 //   TT_STRIPE_SECRET_KEY      - sk_test_... while testing (separate from Site-Day's keys)
 //   TT_STRIPE_WEBHOOK_SECRET  - whsec_... from the Stripe webhook endpoint for this function
+//   RESEND_API_KEY, TT_ALERT_TO - owner alert emails (see _shared/tt_alerts.ts); optional
 //
 // Events to send: checkout.session.completed, customer.subscription.created, customer.subscription.updated,
 // customer.subscription.deleted, invoice.paid, invoice.payment_failed
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import { handleEvent, verifyStripeSignature, type StripeSubscription } from "../_shared/tt_billing.ts";
+import { paymentAlert, sendAlert } from "../_shared/tt_alerts.ts";
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
@@ -74,6 +76,16 @@ Deno.serve(async (req) => {
     await db.from("tt_billing_events").update({
       processed_at: new Date().toISOString(), company_id: outcome.companyId || null, error: null,
     }).eq("event_id", event.id);
+    // Owner email for sign-ups to paid plans, renewals, failed payments and cancellations. Never blocks the webhook.
+    if (outcome.companyId && !outcome.result.startsWith("ignored")) {
+      try {
+        const { data: co } = await db.from("tt_companies").select("name").eq("id", outcome.companyId).maybeSingle();
+        const alert = paymentAlert(event, co?.name || "");
+        if (alert) await sendAlert(alert);
+      } catch (e) {
+        console.error("alert error", e);
+      }
+    }
     return json(200, { received: true, result: outcome.result });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
