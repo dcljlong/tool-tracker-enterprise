@@ -531,12 +531,12 @@ function AppRoutes() {
 
       <Route
         path="/accept-invite"
-        element={user ? <Navigate to="/" replace /> : <AcceptInvite />}
+        element={<AcceptInvite />}
       />
 
       <Route
         path="/reset-password"
-        element={user ? <Navigate to="/" replace /> : <ResetPassword />}
+        element={<ResetPassword />}
       />
 
       <Route path="/welcome" element={<Welcome />} />
