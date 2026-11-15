@@ -974,12 +974,40 @@ async function request(method, url, body, config = {}) {
   }
 }
 
+// Reset-password and invite links. Supabase sends them in three shapes: ?code= (PKCE, from this app's own
+// "forgot password"; supabase-js swaps it for a session on load), #access_token=... (invites and links made
+// on the server; the PKCE client won't take these itself, so set the session here), or ?token_hash=&type=.
+// Resolves { ok: true } once there's a session to set the password on, else { ok: false, message }.
+export async function authLinkStatus() {
+  const hash = new URLSearchParams((window.location.hash || "").replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const urlError = hash.get("error_description") || query.get("error_description");
+  if (urlError) return { ok: false, message: `${urlError.replace(/\+/g, " ")}. Ask for a new link.` };
+  const accessToken = hash.get("access_token");
+  const refreshToken = hash.get("refresh_token");
+  if (accessToken && refreshToken) {
+    const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+    window.history.replaceState(null, "", window.location.pathname);
+    if (error) return { ok: false, message: "This link has expired or was already used. Ask for a new one." };
+  }
+  const tokenHash = query.get("token_hash");
+  const type = query.get("type");
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
+    window.history.replaceState(null, "", window.location.pathname);
+    if (error) return { ok: false, message: "This link has expired or was already used. Ask for a new one." };
+  }
+  const { data } = await supabase.auth.getSession(); // waits for the ?code= exchange
+  return data.session ? { ok: true } : { ok: false, message: null };
+}
+
 const supabaseApi = {
   get: (url, config) => request("GET", url, null, config),
   delete: (url, config) => request("DELETE", url, null, config),
   post: (url, body, config) => request("POST", url, body, config),
   put: (url, body, config) => request("PUT", url, body, config),
   patch: (url, body, config) => request("PUT", url, body, config),
+  authLinkStatus,
 };
 
 export default supabaseApi;

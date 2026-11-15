@@ -26,9 +26,29 @@ import Welcome from "@/pages/Welcome";
 import { Terms, Privacy } from "@/pages/Legal";
 import QRScannerPage from "@/pages/QRScannerPage";
 
-function AcceptInvite() {
+// Is this page open from a working reset/invite link? Supabase mode asks the auth client; the old FastAPI
+// fallback still uses ?token=.
+function useAuthLink(fallbackMessage) {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const legacyToken = searchParams.get("token") || "";
+  const [state, setState] = useState({ checking: true, ok: false, message: "" });
+  useEffect(() => {
+    let live = true;
+    if (!api.authLinkStatus) {
+      setState({ checking: false, ok: Boolean(legacyToken), message: legacyToken ? "" : fallbackMessage });
+      return undefined;
+    }
+    api.authLinkStatus().then((r) => {
+      if (live) setState({ checking: false, ok: r.ok, message: r.ok ? "" : r.message || fallbackMessage });
+    }).catch(() => live && setState({ checking: false, ok: false, message: fallbackMessage }));
+    return () => { live = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return { ...state, legacyToken };
+}
+
+function AcceptInvite() {
+  const link = useAuthLink("Invite link is missing or has expired. Ask your admin to send a new invite.");
+  const token = link.legacyToken;
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -42,8 +62,8 @@ function AcceptInvite() {
     event.preventDefault();
     setErrorMessage("");
 
-    if (!token) {
-      setErrorMessage("Invite link is missing or invalid.");
+    if (!link.ok) {
+      setErrorMessage(link.message || "Invite link is missing or invalid.");
       return;
     }
 
@@ -89,9 +109,9 @@ function AcceptInvite() {
             </p>
           </div>
 
-          {!token && (
+          {!link.checking && !link.ok && (
             <p className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200" data-testid="accept-invite-token-missing">
-              Invite link is missing or invalid. Ask your administrator to send a new invite.
+              {link.message}
             </p>
           )}
 
@@ -148,7 +168,7 @@ function AcceptInvite() {
               </Button>
               <Button
                 type="submit"
-                disabled={saving || !token}
+                disabled={saving || link.checking || !link.ok}
                 className="h-10 rounded-xl bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
                 data-testid="accept-invite-submit"
               >
@@ -163,8 +183,8 @@ function AcceptInvite() {
 }
 
 function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get("token") || "";
+  const link = useAuthLink("Reset link is missing or has expired. Request a new link from the login screen.");
+  const token = link.legacyToken;
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
@@ -178,8 +198,8 @@ function ResetPassword() {
     event.preventDefault();
     setErrorMessage("");
 
-    if (!token) {
-      setErrorMessage("Reset link is missing or invalid.");
+    if (!link.ok) {
+      setErrorMessage(link.message || "Reset link is missing or invalid.");
       return;
     }
 
@@ -225,9 +245,9 @@ function ResetPassword() {
             </p>
           </div>
 
-          {!token && (
+          {!link.checking && !link.ok && (
             <p className="mb-4 rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-200" data-testid="reset-password-token-missing">
-              Reset link is missing or invalid. Request a new link from the login screen.
+              {link.message}
             </p>
           )}
 
@@ -284,7 +304,7 @@ function ResetPassword() {
               </Button>
               <Button
                 type="submit"
-                disabled={saving || !token}
+                disabled={saving || link.checking || !link.ok}
                 className="h-10 rounded-xl bg-[hsl(38,92%,50%)] px-4 text-xs font-black uppercase tracking-wider text-black hover:bg-[hsl(38,92%,45%)]"
                 data-testid="reset-password-submit"
               >
