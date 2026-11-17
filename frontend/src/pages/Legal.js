@@ -6,7 +6,7 @@ import { PLAN_PRICES, FREE_TOOL_LIMIT } from "@/components/BillingCard";
 export const TERMS_VERSION = "2026-11-draft";
 const DRAFT = true;
 
-const LEGAL = {
+export const LEGAL = {
   product: "Long Line Tool Tracker",
   business: "Long Line",
   operator: "David Christopher Long, a sole trader",
@@ -66,7 +66,7 @@ export function Terms() {
       <li>After the trial, personal accounts drop to the free plan (up to {FREE_TOOL_LIMIT} tools) unless you upgrade. Crew accounts can still see and export their records but can't add or change them until a plan is chosen. Nothing is deleted.</li>
       <li>You can move a personal account up to Crew at any time and keep all your records.</li>
       <li>Paid plans: Personal Plus {PLAN_PRICES.personal_plus_month} or {PLAN_PRICES.personal_plus_year}; Crew {PLAN_PRICES.crew_month}, plus {PLAN_PRICES.crew_extra_seat}. Prices are in NZ dollars. Long Line is not GST registered, so no GST is charged.</li>
-      <li>Paid plans renew automatically each month or year until you cancel. Card payments are handled by Stripe; we never see or store your full card number.</li>
+      <li>Paid plans renew automatically each month or year until you cancel. We'll email you at least 7 days before a yearly plan renews. Card payments are handled by Stripe; we never see or store your full card number.</li>
       <li>You can cancel any time in Settings, under Plan &amp; billing. Your plan stays active until the end of the period you've paid for. We don't give part refunds for unused time, except where the law requires it.</li>
       <li>We'll give you at least 30 days' notice of any price change, by email or in the app.</li>
       <li>If a Crew plan ends and isn't renewed, you can still see and export your records, but can't add or change them until a plan is chosen.</li>
@@ -109,7 +109,7 @@ export function Terms() {
       </p>
       <p>
         To the extent the law allows, we aren't liable for indirect losses (such as lost profit or lost tools), and our total
-        liability to you is limited to the amount you paid us in the 12 months before the claim.
+        liability to you is limited to the greater of the amount you paid us in the 12 months before the claim or NZ$100.
       </p>
 
       <h2>8. Closing your account</h2>

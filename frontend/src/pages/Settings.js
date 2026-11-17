@@ -10,7 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import BillingCard from "@/components/BillingCard";
-import { Mail, Bell, Building, Send, LayoutDashboard, SlidersHorizontal, RotateCcw, Save } from "lucide-react";
+import { Link } from "react-router-dom";
+import { LEGAL } from "@/pages/Legal";
+import { Mail, Bell, Building, Send, LayoutDashboard, SlidersHorizontal, RotateCcw, Save, Download, LogOut } from "lucide-react";
 
 const DASHBOARD_LAYOUT_STORAGE_KEY = "tool_tracker_dashboard_layout_v1";
 
@@ -364,6 +366,31 @@ export default function Settings() {
               Save
             </Button>
           </div>
+        </CardContent>
+      </Card>
+      {/* Your data and closing the account */}
+      <Card className="rounded-[1.35rem] border border-slate-200 bg-white text-slate-950 shadow-[0_18px_46px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-slate-950 dark:text-slate-50" data-testid="settings-your-data">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-['Barlow_Condensed'] text-lg uppercase tracking-tight flex items-center gap-2">
+            <Download size={16} /> Your data
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <p>
+            Your records are yours. Download your tool list from the <Link to="/tools" className="underline">Tools</Link> page
+            (Export), or email us for a full copy of everything.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a href={`mailto:${LEGAL.contactEmail}?subject=${encodeURIComponent("Full data copy - " + (settings?.company_name || user?.email || ""))}`}
+              className="inline-flex h-10 items-center border-2 border-slate-900 px-4 text-xs font-bold uppercase tracking-wider hover:bg-slate-900 hover:text-white dark:border-white/40"
+              data-testid="settings-request-copy">Request a full copy</a>
+            <a href={`mailto:${LEGAL.contactEmail}?subject=${encodeURIComponent("Close my account - " + (settings?.company_name || user?.email || ""))}&body=${encodeURIComponent("Please close my Tool Tracker account. Login email: " + (user?.email || "") + "\n\nI understand any paid plan should be cancelled first under Plan & billing, and records are deleted within 90 days.")}`}
+              className="inline-flex h-10 items-center gap-2 border-2 border-red-600 px-4 text-xs font-bold uppercase tracking-wider text-red-700 hover:bg-red-600 hover:text-white dark:text-red-400"
+              data-testid="settings-close-account"><LogOut size={14} /> Close my account</a>
+          </div>
+          <p className="text-xs text-slate-500">
+            Cancel any paid plan first under Plan &amp; billing. Once closed, records are deleted within 90 days (billing records are kept for tax).
+          </p>
         </CardContent>
       </Card>
     </div>
