@@ -11,7 +11,7 @@ const LEGAL = {
   business: "Long Line",
   operator: "David Christopher Long, a sole trader",
   contactEmail: "support@longline.co.nz",
-  updated: "10 November 2026",
+  updated: "18 November 2026",
 };
 
 function Page({ title, children }) {
@@ -59,8 +59,12 @@ export function Terms() {
       </p>
 
       <h2>2. Plans, trial and payment</h2>
+      <p>There are two kinds of account:</p>
+      <li><b>Personal</b> (Free or Personal Plus) - for your own tools. One login, lend to anyone by name.</li>
+      <li><b>Crew</b> - for a company. Team logins with roles, jobs and sites, and shared records the company controls.</li>
       <li>New accounts get a 14-day trial with unlimited tools.</li>
-      <li>After the trial, personal accounts drop to the free plan (up to {FREE_TOOL_LIMIT} tools) unless you upgrade. Nothing is deleted.</li>
+      <li>After the trial, personal accounts drop to the free plan (up to {FREE_TOOL_LIMIT} tools) unless you upgrade. Crew accounts can still see and export their records but can't add or change them until a plan is chosen. Nothing is deleted.</li>
+      <li>You can move a personal account up to Crew at any time and keep all your records.</li>
       <li>Paid plans: Personal Plus {PLAN_PRICES.personal_plus_month} or {PLAN_PRICES.personal_plus_year}; Crew {PLAN_PRICES.crew_month}, plus {PLAN_PRICES.crew_extra_seat}. Prices are in NZ dollars. Long Line is not GST registered, so no GST is charged.</li>
       <li>Paid plans renew automatically each month or year until you cancel. Card payments are handled by Stripe; we never see or store your full card number.</li>
       <li>You can cancel any time in Settings, under Plan &amp; billing. Your plan stays active until the end of the period you've paid for. We don't give part refunds for unused time, except where the law requires it.</li>
@@ -70,12 +74,15 @@ export function Terms() {
       <h2>3. Your account</h2>
       <li>Keep your password private. You're responsible for what happens under your logins, including people you invite.</li>
       <li>Admins choose who's in their team and what they can do, and can remove them at any time.</li>
+      <li>In a Crew account, the records belong to the company. If you leave the team, the records you added stay with the company.</li>
+      <li>A personal account is separate from any Crew account. Your employer can't see your personal tools, and your personal records stay yours if you change jobs, unless you choose to move them into a Crew account.</li>
       <li>Tell us straight away if you think someone has got into your account.</li>
 
       <h2>4. Your data</h2>
       <p>
         Everything you put in (tools, people, photos, documents, history) stays yours. You give us permission to store and
-        process it only to run the service for you. You can export it at any time. How we look after personal information is
+        process it only to run the service for you. You can download your tool list from the app at any time, and we'll send a
+        full copy of everything on request. How we look after personal information is
         set out in our <Link to="/privacy" className="underline">Privacy Policy</Link>.
       </p>
       <p>
@@ -176,8 +183,8 @@ export function Privacy() {
 
       <h2>Your rights</h2>
       <p>
-        You can ask to see or correct the personal information we hold about you, and you can export your records at any time
-        from the app. If you're a borrower or team member added by someone else, you can also contact us. To make a request, email{" "}
+        You can ask to see or correct the personal information we hold about you. You can download your tool list from the app at
+        any time, and we'll send a full copy of your records on request. If you're a borrower or team member added by someone else, you can also contact us. To make a request, email{" "}
         {LEGAL.contactEmail}. If you're not happy with how we handle it, you can complain to the Office of the Privacy
         Commissioner (privacy.org.nz).
       </p>
