@@ -2,10 +2,11 @@
 // Customer Portal (change card, invoices, cancel). Only company admins can do either.
 //
 // Secrets: TT_STRIPE_SECRET_KEY (sk_test_... while testing), TT_ALLOWED_ORIGINS (the app's address(es)),
-// TT_STRIPE_PORTAL_CONFIG (bpc_... the tool tracker's Customer Portal settings).
+// TT_STRIPE_PORTAL_CONFIG (bpc_... the tool tracker's Customer Portal settings),
+// TT_SITEDAY_CREW_COUPON (optional: Stripe coupon id giving paying Site-Day customers Crew at NZ$39 instead of NZ$49).
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
-import { checkoutLineKeys, stripeForm } from "../_shared/tt_billing.ts";
+import { checkoutLineKeys, siteDayCrewCoupon, stripeForm } from "../_shared/tt_billing.ts";
 
 // The live addresses are built in; TT_ALLOWED_ORIGINS (comma-separated) can add more without a code change.
 const LIVE_ORIGINS = ["https://tools.longline.co.nz", "https://tool-tracker-enterprise.vercel.app"];
@@ -108,6 +109,10 @@ Deno.serve(async (req) => {
       if (error) throw new Error(error.message);
     }
 
+    // Paying Site-Day customers (same login) get the Crew discount automatically.
+    const { data: siteDay } = await service.from("site_day_entitlements").select("status").eq("user_id", user.id).maybeSingle();
+    const coupon = siteDayCrewCoupon(plan, siteDay?.status, Deno.env.get("TT_SITEDAY_CREW_COUPON"));
+
     const session = await stripe("checkout/sessions", {
       mode: "subscription",
       customer: customerId,
@@ -115,7 +120,8 @@ Deno.serve(async (req) => {
       line_items: lines.map((l) => ({ price: byKey.get(l.key), quantity: l.quantity })),
       subscription_data: { metadata: { company_id: companyId, app: "tool-tracker" } },
       metadata: { company_id: companyId, app: "tool-tracker" },
-      allow_promotion_codes: true,
+      // Stripe won't take a coupon and promotion codes together.
+      ...(coupon ? { discounts: [{ coupon }] } : { allow_promotion_codes: true }),
       success_url: `${returnUrl}success`,
       cancel_url: `${returnUrl}cancelled`,
     });

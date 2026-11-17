@@ -6,8 +6,7 @@ const assertThrows = (f: () => unknown) => nodeAssert.throws(f);
 const assertRejects = (f: () => Promise<unknown>) => nodeAssert.rejects(f);
 import {
   checkoutLineKeys, handleEvent, mapStatus, signForTest, stripeForm, subscriptionToRow, verifyStripeSignature,
-  type StripeSubscription, type WebhookDeps,
-} from "./tt_billing.ts";
+  type StripeSubscription, type WebhookDeps, siteDayCrewCoupon } from "./tt_billing.ts";
 
 const CO_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const CO_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
@@ -148,4 +147,15 @@ Deno.test("other events ignored; Stripe errors bubble up (so Stripe retries)", a
   const { deps } = fakeDeps({}, { [CO_A]: { status: "trial" } });
   assertEquals((await handleEvent(ev("charge.refunded", {}), deps)).result, "ignored: charge.refunded");
   await assertRejects(() => handleEvent(ev("customer.subscription.updated", { id: "sub_missing" }), deps));
+});
+
+
+Deno.test("Site-Day discount: only Crew, only paying Site-Day, only when a coupon is set", () => {
+  assertEquals(siteDayCrewCoupon("crew_month", "active", "SD_CREW"), "SD_CREW");
+  assertEquals(siteDayCrewCoupon("crew_month", "trial", "SD_CREW"), null);
+  assertEquals(siteDayCrewCoupon("crew_month", "canceled", "SD_CREW"), null);
+  assertEquals(siteDayCrewCoupon("crew_month", null, "SD_CREW"), null);
+  assertEquals(siteDayCrewCoupon("personal_plus_month", "active", "SD_CREW"), null);
+  assertEquals(siteDayCrewCoupon("crew_month", "active", ""), null);
+  assertEquals(siteDayCrewCoupon("crew_month", "active", undefined), null);
 });

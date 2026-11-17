@@ -101,7 +101,7 @@ export default function Welcome() {
             <Plan
               name="Crew"
               price={PLAN_PRICES.crew_month.replace(" / month incl. 5 users", "")}
-              sub={`per month for the company, 5 users included. Extra users ${PLAN_PRICES.crew_extra_seat.replace(" / month per extra user", "")} each.`}
+              sub={`per month for the company, 5 users included. Extra users ${PLAN_PRICES.crew_extra_seat.replace(" / month per extra user", "")} each. Site-Day customers pay NZ$39.`}
               points={["Logins for your crew", "Handovers between people and sites", "Job numbers and site managers", "Reports, overdue and usage", "Admin, site manager and worker roles"]}
               highlight
             />

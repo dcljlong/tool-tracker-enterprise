@@ -202,3 +202,13 @@ export async function handleEvent(event: StripeEvent, deps: WebhookDeps): Promis
   await deps.updateSubscription(companyId, row);
   return { result: `updated: ${row.plan} ${row.status}`, companyId };
 }
+
+// Site-Day customers get the Crew plan cheaper (NZ$39 instead of NZ$49 a month).
+// The discount is a Stripe coupon whose id is in the TT_SITEDAY_CREW_COUPON secret; no coupon set = no discount.
+// Only a paying Site-Day login ("active") counts - not trials.
+export function siteDayCrewCoupon(plan: string, siteDayStatus: string | null | undefined, couponId: string | null | undefined): string | null {
+  if (plan !== "crew_month") return null;
+  if (siteDayStatus !== "active") return null;
+  const id = (couponId || "").trim();
+  return id || null;
+}
